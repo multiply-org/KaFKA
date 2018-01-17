@@ -30,13 +30,13 @@ import scipy.sparse as sp
 # from scipy.spatial.distance import squareform, pdist
 
 # from utils import  matrix_squeeze, spsolve2, reconstruct_array
-from inference import variational_kalman
-from inference import locate_in_lut, run_emulator, create_uncertainty
-from inference import create_linear_observation_operator
-from inference import create_nonlinear_observation_operator
-from inference import iterate_time_grid
-from inference import propagate_information_filter_LAI # eg
-from inference import hessian_correction
+from .inference import variational_kalman
+from .inference import locate_in_lut, run_emulator, create_uncertainty
+from .inference import create_linear_observation_operator
+from .inference import create_nonlinear_observation_operator
+from .inference import iterate_time_grid
+from .inference import propagate_information_filter_LAI # eg
+from .inference import hessian_correction
 
 # Set up logging
 
@@ -202,7 +202,7 @@ class LinearKalman (object):
         variance `P_forecast`."""
         for step in locate_times:
             LOG.info("Assimilating %s..." % step.strftime("%Y-%m-%d"))
-            for band in xrange(self.bands_per_observation):
+            for band in range(self.bands_per_observation):
                 x_analysis, P_analysis, P_analysis_inverse, innovations = \
                     self.assimilate_band(band, step, x_forecast, P_forecast,
                                          P_forecast_inverse)
@@ -249,7 +249,7 @@ class LinearKalman (object):
             # There might be better tests, but this is quite straightforward
             passer_mask = data.mask[self.state_mask]
             maska = np.concatenate([passer_mask.ravel()
-                                    for i in xrange(self.n_params)])
+                                    for i in range(self.n_params)])
             convergence_norm = np.linalg.norm(x_analysis[maska] -
                                               x_prev[maska])/float(maska.sum())
             LOG.info(

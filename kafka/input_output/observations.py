@@ -39,7 +39,6 @@ MCD43A1/2 -> See BRDF_descriptors!
 
 """
 
-import cPickle
 import datetime
 import glob
 import os
@@ -49,15 +48,10 @@ import gdal
 
 import numpy as np
 
-try:
-    from BRDF_descriptors import RetrieveBRDFDescriptors
-except ImportError:
-    from BRDF-descriptors import RetrieveBRDFDescriptors
-
-#from kernels import Kernels
+from BRDF_descriptors import RetrieveBRDFDescriptors
+import pickle
 
 import scipy.sparse as sp
-from scipy.ndimage import zoom
 
 os.environ['HDF5_DISABLE_VERSION_CHECK'] = '1'
 
@@ -87,65 +81,65 @@ def get_modis_dates(fnames):
 # These classes should define emulators
 
 
-class MOD09_ObservationsKernels(object):
-    """A generic M*D09 data reader"""
-    def __init__(self, dates, filenames):
-        if not len(dates) == len(filenames):
-            raise ValueError("{} dates, {} filenames".format(
-                len(dates), len(filenames)))
-        self.dates = dates  # e.g. a list of datetimes
-        self.filenames = filenames  # a list of files
-
-    def get_band_data(self, the_date, band_no):
-        """Returns observations for a given band, uncertainty, mask and
-        observation operator."""
-        QA_OK = np.array([8, 72, 136, 200, 1032, 1288, 2056, 2120,
-                          2184, 2248])
-        unc = [0.004, 0.015, 0.003, 0.004, 0.013, 0.010, 0.006]
-        try:
-            iloc = self.dates.index(the_date)
-        except ValueError:
-            # No observations found
-            return None
-        fname = self.filenames[iloc]  # Get the HDF filename
+# class MOD09_ObservationsKernels(object):
+#     """A generic M*D09 data reader"""
+#     def __init__(self, dates, filenames):
+#         if not len(dates) == len(filenames):
+#             raise ValueError("{} dates, {} filenames".format(
+#                 len(dates), len(filenames)))
+#         self.dates = dates  # e.g. a list of datetimes
+#         self.filenames = filenames  # a list of files
+#
+#     def get_band_data(self, the_date, band_no):
+#         """Returns observations for a given band, uncertainty, mask and
+#         observation operator."""
+#         QA_OK = np.array([8, 72, 136, 200, 1032, 1288, 2056, 2120,
+#                           2184, 2248])
+#         unc = [0.004, 0.015, 0.003, 0.004, 0.013, 0.010, 0.006]
+#         try:
+#             iloc = self.dates.index(the_date)
+#         except ValueError:
+#             No observations found
+            # return None
+        # fname = self.filenames[iloc]  # Get the HDF filename
         # Read in reflectance
-        g = gdal.Open('HDF4_EOS:EOS_GRID:"{}"'.format(fname) +
-                      ':MODIS_Grid_500m_2D:sur_refl_b0{}_1'.format(band_no))
-        refl = g.ReadAsArray()/10000.  # I think it was 10000...
+        # g = gdal.Open('HDF4_EOS:EOS_GRID:"{}"'.format(fname) +
+        #               ':MODIS_Grid_500m_2D:sur_refl_b0{}_1'.format(band_no))
+        # refl = g.ReadAsArray()/10000.  # I think it was 10000...
         # Read in QA MODIS_Grid_1km_2D:state_1km_1
-        g = gdal.Open('HDF4_EOS:EOS_GRID:"{}"'.format(fname) +
-                      ':MODIS_Grid_1km_2D:state_1km_1')
-        qa = g.ReadAsArray()
-
-        mask = np.in1d(qa, QA_OK).reshape((1200, 1200))
-
+        # g = gdal.Open('HDF4_EOS:EOS_GRID:"{}"'.format(fname) +
+        #               ':MODIS_Grid_1km_2D:state_1km_1')
+        # qa = g.ReadAsArray()
+        #
+        # mask = np.in1d(qa, QA_OK).reshape((1200, 1200))
+        #
         # TODO Need to convert QA to True/False mask
         # Read in angles
-        g = gdal.Open('HDF4_EOS:EOS_GRID:"{}"'.format(fname) +
-                      ':MODIS_Grid_1km_2D:SolarZenith_1')
-        sza = g.ReadAsArray()/100.
-        g = gdal.Open('HDF4_EOS:EOS_GRID:"{}"'.format(fname) +
-                      ':MODIS_Grid_1km_2D:SolarAzimuth_1')
-        saa = g.ReadAsArray()/100.
-        g = gdal.Open('HDF4_EOS:EOS_GRID:"{}"'.format(fname) +
-                      ':MODIS_Grid_1km_2D:SensorZenith_1')
-        vza = g.ReadAsArray()/100.
-        g = gdal.Open('HDF4_EOS:EOS_GRID:"{}"'.format(fname) +
-                      ':MODIS_Grid_1km_2D:SensorAzimuth_1')
-        vaa = g.ReadAsArray()/100.
-        raa = vaa - saa  # I think...
+        # g = gdal.Open('HDF4_EOS:EOS_GRID:"{}"'.format(fname) +
+        #               ':MODIS_Grid_1km_2D:SolarZenith_1')
+        # sza = g.ReadAsArray()/100.
+        # g = gdal.Open('HDF4_EOS:EOS_GRID:"{}"'.format(fname) +
+        #               ':MODIS_Grid_1km_2D:SolarAzimuth_1')
+        # saa = g.ReadAsArray()/100.
+        # g = gdal.Open('HDF4_EOS:EOS_GRID:"{}"'.format(fname) +
+        #               ':MODIS_Grid_1km_2D:SensorZenith_1')
+        # vza = g.ReadAsArray()/100.
+        # g = gdal.Open('HDF4_EOS:EOS_GRID:"{}"'.format(fname) +
+        #               ':MODIS_Grid_1km_2D:SensorAzimuth_1')
+        # vaa = g.ReadAsArray()/100.
+        # raa = vaa - saa  # I think...
         # Needs a zoom to make it 2400*2400
-        raa = zoom(raa, 2, order=0)
-        vza = zoom(vza, 2, order=0)
-        sza = zoom(sza, 2, order=0)
-        mask = zoom(mask, 2, order=0)
-        K = Kernels(vza, sza, raa, LiType="Sparse", doIntegrals=False,
-                    normalise=1, RecipFlag=True,
-                    RossHS=False, MODISSPARSE=True, RossType="Thick")
-        uncertainty = refl*0 + unc[band_no-1]
-        data_object = MOD09_data(refl, mask, uncertainty, K, sza, vza, raa)
-
-        return data_object
+        # raa = zoom(raa, 2, order=0)
+        # vza = zoom(vza, 2, order=0)
+        # sza = zoom(sza, 2, order=0)
+        # mask = zoom(mask, 2, order=0)
+        # K = Kernels(vza, sza, raa, LiType="Sparse", doIntegrals=False,
+        #             normalise=1, RecipFlag=True,
+        #             RossHS=False, MODISSPARSE=True, RossType="Thick")
+        # uncertainty = refl*0 + unc[band_no-1]
+        # data_object = MOD09_data(refl, mask, uncertainty, K, sza, vza, raa)
+        #
+        # return data_object
 
 
 class SynergyKernels(object):
@@ -195,7 +189,7 @@ class SynergyKernels(object):
         # find the requested date
         date_idx = self.dates.index(the_date)
         BHR = []
-        for band in xrange(7):
+        for band in range(7):
             g = gdal.Open(self.kernels[date_idx].replace(
                 "b0", "b%d" % band))
             kernels = g.ReadAsArray()  # 3*nx*ny
@@ -213,6 +207,7 @@ class SynergyKernels(object):
 
 
 class BHRObservations(RetrieveBRDFDescriptors):
+
     def __init__(self, emulator, tile, mcd43a1_dir,
                  start_time, ulx=0, uly=0, dx=2400, dy=2400, end_time=None,
                  mcd43a2_dir=None):
@@ -267,10 +262,9 @@ class BHRObservations(RetrieveBRDFDescriptors):
         if not os.path.exists(emulator):
             raise IOError("The emulator {} doesn't exist!".format(emulator))
         # Assuming emulator is in an pickle file...
-        self.emulator = cPickle.load(open(emulator, 'rb'))
+        self.emulator = pickle.load(open(emulator, 'rb'), encoding='latin1')
 
     def get_band_data(self, the_date, band_no):
-
         to_BHR = np.array([1.0, 0.189184, -1.377622])
         retval = self.get_brdf_descriptors(band_no, the_date)
         if retval is None:  # No data on this date

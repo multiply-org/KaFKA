@@ -74,4 +74,3 @@ def variational_kalman( observations, mask, state_mask, uncertainty, H_matrix, n
     #                                    mask.ravel(), n_params=n_params)
     
     return x_analysis, None, A, innovations, fwd_modelled
-    

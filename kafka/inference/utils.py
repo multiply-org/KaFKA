@@ -294,7 +294,7 @@ def spsolve2(a, b):
     a_lu = spl.splu(a.tocsc())   # LU decomposition for sparse a
     out = sp.lil_matrix((a.shape[1], b.shape[1]), dtype=np.float32)
     b_csc = b.tocsc()
-    for j in xrange(b.shape[1]):
+    for j in range(b.shape[1]):
         bb = np.array(b_csc[j, :].todense()).squeeze()
         out[j, j] = a_lu.solve(bb)[j]
     return out.tocsr()

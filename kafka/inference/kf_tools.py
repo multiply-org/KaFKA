@@ -8,7 +8,7 @@ import numpy as np
 import scipy.sparse as sp
 import scipy.sparse.linalg as spl
 
-from utils import block_diag
+from .utils import block_diag
 
 
 def band_selecta(band):
@@ -70,8 +70,7 @@ def tip_prior():
     return x0, little_p, inv_p
 
 
-def propagate_standard_kalman(x_analysis, P_analysis, P_analysis_inverse,
-                              M_matrix, Q_matrix):
+def propagate_standard_kalman(x_analysis, P_analysis, P_analysis_inverse, M_matrix, Q_matrix):
     """Standard Kalman filter state propagation using the state covariance
     matrix and a linear state transition model. This function returns `None`
     for the forecast inverse covariance matrix.
@@ -141,8 +140,7 @@ def propagate_information_filter_SLOW(x_analysis, P_analysis, P_analysis_inverse
 
     return x_forecast, None, P_forecast_inverse
 
-def propagate_information_filter_SLOW(x_analysis, P_analysis, P_analysis_inverse,
-                                 M_matrix, Q_matrix):
+def propagate_information_filter_SLOW(x_analysis, P_analysis, P_analysis_inverse, M_matrix, Q_matrix):
     """Information filter state propagation using the INVERSER state covariance
     matrix and a linear state transition model. This function returns `None`
     for the forecast covariance matrix (as this takes forever). This method is
@@ -185,20 +183,18 @@ def propagate_information_filter_SLOW(x_analysis, P_analysis, P_analysis_inverse
     return x_forecast, None, P_forecast_inverse
 
 
-def propagate_information_filter_LAI(x_analysis, P_analysis,
-                                     P_analysis_inverse,
-                                     M_matrix, Q_matrix):
+def propagate_information_filter_LAI(x_analysis, P_analysis, P_analysis_inverse, M_matrix, Q_matrix):
 
 
     x_forecast = M_matrix.dot(x_analysis)
     x_prior, c_prior, c_inv_prior = tip_prior()
-    n_pixels = len(x_analysis)/7
-    x0 = np.array([x_prior for i in xrange(n_pixels)]).flatten()
+    n_pixels = int(len(x_analysis)/7)
+    x0 = np.array([x_prior for i in range(n_pixels)]).flatten()
     x0[6::7] = x_forecast[6::7] # Update LAI
-    print "LAI:", -2*np.log(x_forecast[6::7])
+    print("LAI:", -2*np.log(x_forecast[6::7]))
     lai_post_cov = P_analysis_inverse.diagonal()
     c_inv_prior_mat = []
-    for n in xrange(n_pixels):
+    for n in range(n_pixels):
         c_inv_prior[6,6] =  lai_post_cov[n]
         c_inv_prior_mat.append(c_inv_prior)
 
@@ -206,9 +202,7 @@ def propagate_information_filter_LAI(x_analysis, P_analysis,
 
     return x0, None, P_forecast_inverse
 
-def no_propagation(x_analysis, P_analysis,
-                                     P_analysis_inverse,
-                                     M_matrix, Q_matrix):
+def no_propagation(x_analysis, P_analysis, P_analysis_inverse, M_matrix, Q_matrix):
     """No propagation. In this case, we return the original prior. As the
     information filter behaviour is the standard behaviour in KaFKA, we
     only return the inverse covariance matrix. **NOTE** the input parameters
@@ -237,9 +231,9 @@ def no_propagation(x_analysis, P_analysis,
     inverse covariance matrix)"""
 
     x_prior, c_prior, c_inv_prior = tip_prior()
-    n_pixels = len(x_analysis)/7
-    x_forecast = np.array([x_prior for i in xrange(n_pixels)]).flatten()
-    c_inv_prior_mat = [c_inv_prior for n in xrange(n_pixels)]
+    n_pixels = int(len(x_analysis)/7)
+    x_forecast = np.array([x_prior for i in range(n_pixels)]).flatten()
+    c_inv_prior_mat = [c_inv_prior for n in range(n_pixels)]
     P_forecast_inverse=block_diag(c_inv_prior_mat, dtype=np.float32)
 
     return x_forecast, None, P_forecast_inverse
