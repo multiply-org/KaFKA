@@ -208,9 +208,9 @@ class LinearKalman (object):
                                          P_forecast_inverse)
                 # Once the band is assimilated, the posterior (i.e. analysis)
                 # becomes the prior (i.e. forecast)
-                x_forecast = x_analysis
+                x_forecast = np.copy(x_analysis)
                 P_forecast = P_analysis
-                P_forecast_inv = P_analysis_inverse
+                P_forecast_inverse = P_analysis_inverse
 
         self.previous_state = Previous_State(step, x_analysis,
                                              P_analysis, P_analysis_inverse)
