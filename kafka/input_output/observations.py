@@ -49,7 +49,7 @@ import gdal
 
 import numpy as np
 
-from BRDF_descriptors import RetrieveBRDFDescriptors
+# from BRDF_descriptors import RetrieveBRDFDescriptors
 
 #from kernels import Kernels
 
@@ -209,92 +209,92 @@ class SynergyKernels(object):
             BHR = np.sum(BHR * to_NIR, axis=0) + a_to_NIR
 
 
-class BHRObservations(RetrieveBRDFDescriptors):
-    def __init__(self, emulator, tile, mcd43a1_dir,
-                 start_time, ulx=0, uly=0, dx=2400, dy=2400, end_time=None,
-                 mcd43a2_dir=None):
-        """The class needs to locate the data granules. We assume that
-        these are available somewhere in the filesystem and that we can
-        index them by location (MODIS tile name e.g. "h19v10") and
-        time. The user can give a folder for the MCD43A1 and A2 granules,
-        and if the second is ignored, it will be assumed that they are
-        in the same folder. We also need a starting date (either a
-        datetime object, or a string in "%Y-%m-%d" or "%Y%j" format. If
-        the end time is not specified, it will be set to the date of the
-        latest granule found."""
+# class BHRObservations(RetrieveBRDFDescriptors):
+#     def __init__(self, emulator, tile, mcd43a1_dir,
+#                  start_time, ulx=0, uly=0, dx=2400, dy=2400, end_time=None,
+#                  mcd43a2_dir=None):
+#         """The class needs to locate the data granules. We assume that
+#         these are available somewhere in the filesystem and that we can
+#         index them by location (MODIS tile name e.g. "h19v10") and
+#         time. The user can give a folder for the MCD43A1 and A2 granules,
+#         and if the second is ignored, it will be assumed that they are
+#         in the same folder. We also need a starting date (either a
+#         datetime object, or a string in "%Y-%m-%d" or "%Y%j" format. If
+#         the end time is not specified, it will be set to the date of the
+#         latest granule found."""
 
-        # Call the constructor first
-        # Python2
-        RetrieveBRDFDescriptors.__init__(self, tile,
-                                         mcd43a1_dir, start_time, end_time,
-                                         mcd43a2_dir)
-        # Python3
-        #  super().__init__(tile, mcd43a1_dir, start_time, end_time,
-        #                  mcd43a2_dir)
-        self._get_emulator(emulator)
-        self.dates = sorted(self.a1_granules.keys())
-        self.dates = self.dates[::8]
-        a1_temp = {}
-        a2_temp = {}
-        for k in self.dates:
-            a1_temp[k] = self.a1_granules[k]
-            a2_temp[k] = self.a2_granules[k]
-        self.a1_granules = a1_temp
-        self.a2_granules = a2_temp
-        self.band_transfer = {0: "vis",
-                              1: "nir"}
-        self.ulx = ulx
-        self.uly = uly
-        self.dx = dx
-        self.dy = dy
+#         # Call the constructor first
+#         # Python2
+#         RetrieveBRDFDescriptors.__init__(self, tile,
+#                                          mcd43a1_dir, start_time, end_time,
+#                                          mcd43a2_dir)
+#         # Python3
+#         #  super().__init__(tile, mcd43a1_dir, start_time, end_time,
+#         #                  mcd43a2_dir)
+#         self._get_emulator(emulator)
+#         self.dates = sorted(self.a1_granules.keys())
+#         self.dates = self.dates[::8]
+#         a1_temp = {}
+#         a2_temp = {}
+#         for k in self.dates:
+#             a1_temp[k] = self.a1_granules[k]
+#             a2_temp[k] = self.a2_granules[k]
+#         self.a1_granules = a1_temp
+#         self.a2_granules = a2_temp
+#         self.band_transfer = {0: "vis",
+#                               1: "nir"}
+#         self.ulx = ulx
+#         self.uly = uly
+#         self.dx = dx
+#         self.dy = dy
 
-    def define_output(self):
-        reference_fname = self.a1_granules[self.dates[0]]
-        g = gdal.Open('HDF4_EOS:EOS_GRID:' +
-                      '"%s":MOD_Grid_BRDF:BRDF_Albedo_Parameters_vis' %
-                      reference_fname)
-        proj = g.GetProjection()
-        geoT = np.array(g.GetGeoTransform())
-        new_geoT = geoT*1.
-        new_geoT[0] = new_geoT[0] + self.ulx*new_geoT[1]
-        new_geoT[3] = new_geoT[3] + self.uly*new_geoT[5]
-        return proj, new_geoT.tolist()
+#     def define_output(self):
+#         reference_fname = self.a1_granules[self.dates[0]]
+#         g = gdal.Open('HDF4_EOS:EOS_GRID:' +
+#                       '"%s":MOD_Grid_BRDF:BRDF_Albedo_Parameters_vis' %
+#                       reference_fname)
+#         proj = g.GetProjection()
+#         geoT = np.array(g.GetGeoTransform())
+#         new_geoT = geoT*1.
+#         new_geoT[0] = new_geoT[0] + self.ulx*new_geoT[1]
+#         new_geoT[3] = new_geoT[3] + self.uly*new_geoT[5]
+#         return proj, new_geoT.tolist()
 
-    def _get_emulator(self, emulator):
-        if not os.path.exists(emulator):
-            raise IOError("The emulator {} doesn't exist!".format(emulator))
-        # Assuming emulator is in an pickle file...
-        self.emulator = cPickle.load(open(emulator, 'rb'))
+#     def _get_emulator(self, emulator):
+#         if not os.path.exists(emulator):
+#             raise IOError("The emulator {} doesn't exist!".format(emulator))
+#         # Assuming emulator is in an pickle file...
+#         self.emulator = cPickle.load(open(emulator, 'rb'))
 
-    def get_band_data(self, the_date, band_no):
+#     def get_band_data(self, the_date, band_no):
 
-        to_BHR = np.array([1.0, 0.189184, -1.377622])
-        retval = self.get_brdf_descriptors(band_no, the_date)
-        if retval is None:  # No data on this date
-            return None
-        kernels, mask, qa_level = retval
-        mask = mask[self.uly:(self.uly + self.dy),
-                    self.ulx:(self.ulx + self.dx)]
-        qa_level = qa_level[self.uly:(self.uly + self.dy),
-                            self.ulx:(self.ulx + self.dx)]
-        kernels = kernels[:, self.uly:(self.uly + self.dy),
-                          self.ulx:(self.ulx + self.dx)]
-        bhr = np.where(mask,
-                       kernels * to_BHR[:, None, None], np.nan).sum(axis=0)
-        R_mat = np.zeros_like(bhr)
+#         to_BHR = np.array([1.0, 0.189184, -1.377622])
+#         retval = self.get_brdf_descriptors(band_no, the_date)
+#         if retval is None:  # No data on this date
+#             return None
+#         kernels, mask, qa_level = retval
+#         mask = mask[self.uly:(self.uly + self.dy),
+#                     self.ulx:(self.ulx + self.dx)]
+#         qa_level = qa_level[self.uly:(self.uly + self.dy),
+#                             self.ulx:(self.ulx + self.dx)]
+#         kernels = kernels[:, self.uly:(self.uly + self.dy),
+#                           self.ulx:(self.ulx + self.dx)]
+#         bhr = np.where(mask,
+#                        kernels * to_BHR[:, None, None], np.nan).sum(axis=0)
+#         R_mat = np.zeros_like(bhr)
 
-        R_mat[qa_level == 0] = np.maximum(2.5e-3, bhr[qa_level == 0] * 0.05)
-        R_mat[qa_level == 1] = np.maximum(2.5e-3, bhr[qa_level == 1] * 0.07)
-        R_mat[np.logical_not(mask)] = 0.
-        N = mask.ravel().shape[0]
-        R_mat_sp = sp.lil_matrix((N, N))
-        R_mat_sp.setdiag(1./(R_mat.ravel())**2)
-        R_mat_sp = R_mat_sp.tocsr()
+#         R_mat[qa_level == 0] = np.maximum(2.5e-3, bhr[qa_level == 0] * 0.05)
+#         R_mat[qa_level == 1] = np.maximum(2.5e-3, bhr[qa_level == 1] * 0.07)
+#         R_mat[np.logical_not(mask)] = 0.
+#         N = mask.ravel().shape[0]
+#         R_mat_sp = sp.lil_matrix((N, N))
+#         R_mat_sp.setdiag(1./(R_mat.ravel())**2)
+#         R_mat_sp = R_mat_sp.tocsr()
 
-        bhr_data = BHR_data(bhr, mask, R_mat_sp, None, self.emulator)
-        return bhr_data
+#         bhr_data = BHR_data(bhr, mask, R_mat_sp, None, self.emulator)
+#         return bhr_data
 
-    
+
 class BHRObservationsTest(object):
     """A class to test BHR data "one pixel at a time". In essence, one only needs
     to define a self.dates dictionary (keys are datetime objects), and a 2 element
@@ -307,8 +307,8 @@ class BHRObservationsTest(object):
         self.data = {}
         for ii, the_date in enumerate(dates):
             self.data[the_date] = [vis_albedo[ii], nir_albedo[ii]]
-        
-            
+
+
     def _get_emulator(self, emulator):
         if not os.path.exists(emulator):
             raise IOError("The emulator {} doesn't exist!".format(emulator))
@@ -327,8 +327,8 @@ class BHRObservationsTest(object):
 
         bhr_data = BHR_data(bhr, mask, R_mat_sp, None, self.emulator)
         return bhr_data
-        
-    
+
+
 class KafkaOutputBHRTest(object):
     """A very simple class to output the state."""
     def __init__(self):
@@ -339,7 +339,7 @@ class KafkaOutputBHRTest(object):
         for ii, param in enumerate(["w_vis", "x_vis", "a_vis",
                                     "w_nir", "x_nir", "a_nir", "TeLAI"]):
             solution[param] = x_analysis[ii::7]
-        self.output[timestep] = solution        
+        self.output[timestep] = solution
 
 class KafkaOutput(object):
     """A very simple class to output the state."""

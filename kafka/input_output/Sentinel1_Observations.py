@@ -10,7 +10,7 @@ from collections import namedtuple
 import gdal
 
 import numpy as np
-
+import pdb
 import osr
 
 import scipy.sparse as sp
@@ -180,7 +180,10 @@ class S1Observations(object):
         # metadata['incidence_angle_deg'] =
         fname = 'NETCDF:"{:s}":{:s}'.format(this_file, "theta")
         obs_ptr = reproject_image(fname, self.state_mask)
-        metadata = {'incidence_angle': obs_ptr.ReadAsArray()}
+        relativeorbit = obs_ptr.GetMetadata()['NC_GLOBAL#relativeorbit']
+        orbitdirection = obs_ptr.GetMetadata()['NC_GLOBAL#orbitdirection']
+        satellite = obs_ptr.GetMetadata()['NC_GLOBAL#satellite']
+        metadata = {'incidence_angle': obs_ptr.ReadAsArray(), 'relativeorbit': relativeorbit, 'orbitdirection': orbitdirection, 'satellite': satellite}
         sardata = SARdata(observations, R_mat_sp, mask, metadata, emulator)
         return sardata
 
