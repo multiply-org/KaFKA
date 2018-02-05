@@ -250,6 +250,7 @@ class LinearKalman (object):
             UNC = []
             META = []
             H_matrix = []
+            P_correction = []
             for band, data in enumerate(current_data):
                 # Create H0 and H_matrix around x_prev
                 # Also extract single band information from nice package
@@ -268,13 +269,18 @@ class LinearKalman (object):
                 MASK.append(data.mask)
                 UNC.append(data.uncertainty)
                 META.append(data.metadata)
-            # Now call the solver 
+                innovation = data.observation - H_matrix[0]
+                P_correction.append(hessian_correction(data.emulator, x_analysis,
+                                                 data.uncertainty, innovation,
+                                                 data.mask, self.state_mask, band,
+                                                 self.n_params))
+
+            # Now call the solver
             x_analysis, P_analysis, P_analysis_inverse, \
                 innovations, fwd_modelled = self.solver_multiband(
                     Y, MASK, H_matrix, x_prev, x_forecast,
                     P_forecast, P_forecast_inverse, UNC,
                     META)
-            
 
             # Test convergence. We calculate the l2 norm of the difference
             # between the state at the previous iteration and the current one
@@ -302,12 +308,10 @@ class LinearKalman (object):
             
         # Once we have converged...
         # Correct hessian for higher order terms
-        # TODO THIS WILL NOT WORK AS IT IS!!!
-        #P_correction = hessian_correction(data.emulator, x_analysis,
-        #                                  data.uncertainty, innovations,
-        #                                  data.mask, self.state_mask, band,
-        #                                  self.n_params)
-        #P_analysis_inverse = P_analysis_inverse - P_correction
+
+        # sum the Hessian correction
+        np.sum(P_correction)
+        P_analysis_inverse = P_analysis_inverse - P_correction
 
         # Done with this observation, move along...
 
