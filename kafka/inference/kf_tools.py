@@ -23,52 +23,56 @@ def band_selecta(band):
         return np.array([3, 4, 6, 5])
 
 
-def hessian_correction_pixel(gp, x0, C_obs_inv, innovation, band, nparams):
+def hessian_correction_pixel(hessian, C_obs_inv, innovation):
+    '''
     selecta = band_selecta(band)
     ddH = gp.hessian(np.atleast_2d(x0[selecta]))
     big_ddH = np.zeros((nparams, nparams))
     for i, ii in enumerate(selecta):
         for j, jj in enumerate(selecta):
             big_ddH[ii, jj] = ddH.squeeze()[i, j]
-    big_hessian_corr = big_ddH*C_obs_inv*innovation
-    return big_hessian_corr
+    '''
+    hessian_corr = hessian*C_obs_inv*innovation
+    return hessian_corr
 
 
-def hessian_correction(gp, x0, R_mat, innovation, mask, state_mask, band,
+def hessian_correction(hessian, R_mat, innovation, mask, state_mask,
                        nparams):
     """Calculates higher order Hessian correction for the likelihood term.
     Needs the GP, the Observational uncertainty, the mask...."""
-    if not hasattr(gp, "hessian"):
+    if hessian is None:
         # The observation operator does not provide a Hessian method. We just
         # return 0, meaning no Hessian correction.
         return 0.
     C_obs_inv = R_mat.diagonal()[state_mask.flatten()]
     mask = mask[state_mask].flatten()
+
     little_hess = []
-    for i, (innov, C, m) in enumerate(zip(innovation, C_obs_inv, mask)):
+    for i, (innov, C, m, hess) in enumerate(zip(innovation, C_obs_inv, mask, hessian)):
         if not m:
             # Pixel is masked
             hessian_corr = np.zeros((nparams, nparams))
         else:
-            # Get state for current pixel
-            x0_pixel = x0.squeeze()[(nparams*i):(nparams*(i + 1))]
+            ## Get state for current pixel
+            #x0_pixel = x0.squeeze()[(nparams*i):(nparams*(i + 1))]
             # Calculate the Hessian correction for this pixel
-            hessian_corr = m * hessian_correction_pixel(gp, x0_pixel, C,
-                                                        innov, band, nparams)
+            hessian_corr = m * hessian_correction_pixel(hess, C, innov)
         little_hess.append(hessian_corr)
-    hessian_corr = block_diag(little_hess)
+
+    hessian_corr = block_diag(hessian)
     return hessian_corr
 
 
-def hessian_correction_multiband(gp, x0, R_mats, innovations, masks, state_mask, n_bands,
-                       nparams):
+def hessian_correction_multiband(hessians, R_mats, innovations,
+                                 masks, state_mask, n_bands, nparams):
     """ Non linear correction for the Hessian of the cost function. This handles
     multiple bands. """
     little_hess_cor = []
-    for R, innovation, mask, band in zip(R_mats, innovations, masks, range(n_bands)):
-        little_hess_cor.append(hessian_correction(gp, x0, R, innovation, mask, state_mask, band,
-                       nparams))
-    hessian_corr = sum(little_hess_cor) #block_diag(little_hess_cor)
+    for R, hessian, innovation, mask in zip(
+            R_mats, hessians, innovations, masks):
+        little_hess_cor.append(hessian_correction(hessian, R, innovation,
+                                                  mask, state_mask, nparams))
+    hessian_corr = sum(little_hess_cor)
     return hessian_corr
 
 
@@ -317,7 +321,9 @@ def no_propagation(x_analysis, P_analysis,
                    P_analysis_inverse,
                    M_matrix, Q_matrix,
                    prior=None, state_propagator=None, date=None):
-    """No propagation. In this case, we return the original prior. As the
+    """
+    THIS IS ONLY SUITABLE FOR BROADBAND SAIL uses TIP prior
+    No propagation. In this case, we return the original prior. As the
     information filter behaviour is the standard behaviour in KaFKA, we
     only return the inverse covariance matrix. **NOTE** the input parameters
     are there to comply with the API, but are **UNUSED**.

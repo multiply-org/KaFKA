@@ -305,12 +305,27 @@ class LinearKalman (object):
         # Once we have converged...
         # Correct hessian for higher order terms
         #split_points = [m.sum( ) for m in MASK]
+        HESSIAN = []
         INNOVATIONS = np.split(innovations, n_bands)
-        P_correction = hessian_correction_multiband(data.emulator, x_analysis,
+        for band, data in enumerate(current_data):
+                # calculate the hessian for the solution
+                _,_,hessian= self._create_observation_operator(self.n_params,
+                                                         data.emulator,
+                                                         data.metadata,
+                                                         data.mask,
+                                                         self.state_mask,
+                                                         x_analysis,
+                                                         band,
+                                                         calc_hess = True)
+                HESSIAN.append(hessian)
+        P_correction = hessian_correction_multiband(HESSIAN,
                                                     UNC, INNOVATIONS, MASK,
                                                     self.state_mask, n_bands,
                                                     self.n_params)
         P_analysis_inverse = P_analysis_inverse - P_correction
+        # Rarely, this returns a small negative value. For now set to nan.
+        # May require further investigation in the future
+        P_analysis_inverse[P_analysis_inverse<0] = np.nan
 
         # Done with this observation, move along...
         
@@ -407,8 +422,11 @@ class LinearKalman (object):
                                           data.uncertainty, innovations,
                                           data.mask, self.state_mask, band,
                                           self.n_params)
+        # UPDATE HESSIAN WITH HIGHER ORDER CONTRIBUTION
         P_analysis_inverse = P_analysis_inverse - P_correction
-        # P_analysis_inverse = UPDATE HESSIAN WITH HIGHER ORDER CONTRIBUTION
+        # Rarely, this returns a small negative value. For now set to nan.
+        # May require further investigation in the future
+        P_analysis_inverse[P_analysis_inverse<0] = np.nan
         import matplotlib.pyplot as plt
         M = self.state_mask*1.
         M[self.state_mask] = x_analysis[6::7]

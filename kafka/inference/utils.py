@@ -171,12 +171,26 @@ def create_nonlinear_observation_operator(n_params, emulator, metadata,
 
     LOG.info("\tDone!")
 
-    return (H0, H_matrix.tocsr())
+    '''if calc_hess:
+        ddH = emulator.hessian(x0[mask[state_mask]])
+        hess = np.zeros((n_times, nparams, nparams))
+        for lil_hes , m in zip(ddH, mask[state_mask].flatten()):
+            if m:
+                big_ddH = np.zeros((nparams, nparams))
+                for i, ii in enumerate(state_mapper):
+                    for j, jj in enumerate(state_mapper):
+                        #big_ddH[ii, jj] = .squeeze()[i, j]
+                        pass
+            #hess[.append(big_ddH)
+    '''
+    return (H0, H_matrix.tocsr(), hess) if calc_hess else (H0, H_matrix.tocsr())
+
 
 
 
 def create_prosail_observation_operator(n_params, emulator, metadata,
-                                          mask, state_mask,  x_forecast, band):
+                                          mask, state_mask,  x_forecast,
+                                          band, calc_hess=False):
     """Using an emulator of the nonlinear model around `x_forecast`.
     This case is quite special, as I'm focusing on a BHR SAIL
     version (or the JRC TIP), which have spectral parameters
@@ -213,7 +227,10 @@ def create_prosail_observation_operator(n_params, emulator, metadata,
 
     LOG.info("\tDone!")
 
-    return (H0, H_matrix.tocsr())
+    if calc_hess:
+        hess = emulator.hessian(x0[mask[state_mask]])
+
+    return (H0, H_matrix.tocsr(), hess) if calc_hess else (H0, H_matrix.tocsr())
 
 
 
