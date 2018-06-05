@@ -6,12 +6,13 @@ import os
 import sys
 
 import numpy as np
-import scipy.sparse as sp # Required for unc
+import scipy.sparse as sp  # Required for unc
 import gdal
 import osr
 
 import xml.etree.ElementTree as ET
 from collections import namedtuple
+
 
 def parse_xml(filename):
     """Parses the XML metadata file to extract view/incidence 
@@ -93,7 +94,6 @@ class PlanetlabsObservations(object):
             raise IOError("S2 data folder doesn't exist")
         self.parent = parent_folder
 
-
         self.emulator_folder = emulator_folder
 
         # NP This is a static mask, i.e. the same for all time-steps
@@ -129,11 +129,10 @@ class PlanetlabsObservations(object):
         g = gdal.Open(self.state_mask)
         proj = g.GetProjection()
         geoT = np.array(g.GetGeoTransform())
-        #new_geoT = geoT*1.
-        #new_geoT[0] = new_geoT[0] + self.ulx*new_geoT[1]
-        #new_geoT[3] = new_geoT[3] + self.uly*new_geoT[5]
-        return proj, geoT.tolist() #new_geoT.tolist()
-
+        # new_geoT = geoT*1.
+        # new_geoT[0] = new_geoT[0] + self.ulx*new_geoT[1]
+        # new_geoT[3] = new_geoT[3] + self.uly*new_geoT[5]
+        return proj, geoT.tolist() # new_geoT.tolist()
 
     def _find_granules(self, parent_folder):
         """Finds granules. Currently does so by checking for
@@ -152,7 +151,6 @@ class PlanetlabsObservations(object):
         for the_date in self.dates:
             self.bands_per_observation[the_date] = 10 # 10 bands
 
-
     def _find_emulator(self, sza, saa, vza, vaa):
         raa = vaa - saa
         vzas = np.array([float(s.split("_")[-3]) 
@@ -167,7 +165,6 @@ class PlanetlabsObservations(object):
         iloc = np.where(e1*e2*e3)[0][0]
         return self.emulator_files[iloc]
 
-
     def get_band_data(self, timestep, band):
         # NP This is the only function that is needed by the rest of
         # the KaFKA code and must have this signature. All other
@@ -176,7 +173,6 @@ class PlanetlabsObservations(object):
         # as they are.
         # band is an integer between 0 and (Nbands-1)
         # timestep is a date time object
-
 
         # NP The next 4 lines are just about getting the angles from
         # the meta data. The angles are used by the emulators
@@ -190,7 +186,6 @@ class PlanetlabsObservations(object):
         metadata = dict(zip(["sza", "saa", "vza", "vaa"],
                             [sza, saa, vza, vaa]))
 
-
         # NP This is reading in the emulators (stored as pickles)
         # It shouldn't need changing except for if we generate the
         # emulators using python 3 (the encoding variable is there
@@ -198,7 +193,6 @@ class PlanetlabsObservations(object):
         emulator_file = self._find_emulator(sza, saa, vza, vaa)
         emulator = cPickle.load( open (emulator_file, 'rb'),
                                  encoding='latin1' )
-
 
         # Read and reproject S2 surface reflectance
 
@@ -209,7 +203,6 @@ class PlanetlabsObservations(object):
         original_s2_file = os.path.join ( current_folder, 
                                          "B{}_sur.tif".format(the_band))
         print(original_s2_file)
-
 
         # NP this is here because in the future we may have observations
         # on a different grid to the grid we retrieve biophysical parameters
@@ -226,7 +219,6 @@ class PlanetlabsObservations(object):
         # NP Apply you wonderful new cloud/good obs mask here!
         mask = rho_surface > 0
         rho_surface = np.where(mask, rho_surface/10000., 0)
-
 
         # Read and reproject S2 angles
 
@@ -254,4 +246,3 @@ class PlanetlabsObservations(object):
         s2data = planetlabs_data(rho_surface, R_mat_sp, mask, metadata, emulator[s2_band])
 
         return s2data
-
