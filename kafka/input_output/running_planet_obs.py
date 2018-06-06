@@ -1,4 +1,6 @@
-import Planetlabs_Observations
+import datetime
+
+from Planetlabs_Observations import PlanetlabsObservations
 
 
 if __name__ == "__main__":
@@ -9,8 +11,10 @@ if __name__ == "__main__":
 
     data_folder = "/data/001_planet_sentinel_study/planet/utm11n_sur_ref/"
 
-    state_mask = "/data/001_planet_sentinel_study/planet/utm11n_sur_ref/state_mask.tif"
+    state_mask = "/data/001_planet_sentinel_study/planet/utm11n_sur_ref/field_sites.tif"
 
-    planet_observations = Planetlabs_Observations(data_folder,
-                                                  emulator_folder,
-                                                  state_mask)
+    planet_observations = PlanetlabsObservations(data_folder,
+                                                 emulator_folder,
+                                                 state_mask)
+
+    planet_observations.get_band_data(datetime.datetime(2017, 4, 4, 18, 1, 19), 3)

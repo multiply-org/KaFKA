@@ -198,4 +198,3 @@ if __name__ == "__main__":
                      for x in range(0, num_days, 2)))
     kf.run(time_grid, x_forecast, None, P_forecast_inv,
            iter_obs_op=True)
-    
