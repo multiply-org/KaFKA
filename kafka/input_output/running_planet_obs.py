@@ -18,6 +18,6 @@ if __name__ == "__main__":
                                                  state_mask)
 
     planet = planet_observations.get_band_data(datetime.datetime
-                                               (2017, 4, 4, 18, 1, 19), 3)
+                                               (2017, 4, 4, 18, 1, 19), 1)
 
     print(planet)

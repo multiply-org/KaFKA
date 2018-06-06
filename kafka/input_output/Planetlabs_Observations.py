@@ -16,11 +16,11 @@ from collections import namedtuple
 
 
 def parse_xml(filename):
-    """Parses the XML metadata file to extract view/incidence 
+    """Parses the XML metadata file to extract view/incidence
     angles. The file has grids and all sorts of stuff, but
-    here we just average everything, and you get 
+    here we just average everything, and you get
     1. SZA
-    2. SAA 
+    2. SAA
     3. VZA
     4. VAA.
     """
@@ -197,12 +197,12 @@ class PlanetlabsObservations(object):
 
     def _find_emulator(self, sza, saa, vza, vaa):
         raa = vaa - saa
-        vzas = np.array([float(s.split("_")[-3]) 
+        vzas = np.array([float(s.split("_")[-3])
                          for s in self.emulator_files])
-        szas = np.array([float(s.split("_")[-2]) 
+        szas = np.array([float(s.split("_")[-2])
                          for s in self.emulator_files])
-        raas = np.array([float(s.split("_")[-1].split(".")[0]) 
-                         for s in self.emulator_files])        
+        raas = np.array([float(s.split("_")[-1].split(".")[0])
+                         for s in self.emulator_files])
         e1 = szas == szas[np.argmin(np.abs(szas - sza))]
         e2 = vzas == vzas[np.argmin(np.abs(vzas - vza))]
         e3 = raas == raas[np.argmin(np.abs(raas - raa))]
