@@ -17,4 +17,7 @@ if __name__ == "__main__":
                                                  emulator_folder,
                                                  state_mask)
 
-    planet_observations.get_band_data(datetime.datetime(2017, 4, 4, 18, 1, 19), 3)
+    planet = planet_observations.get_band_data(datetime.datetime
+                                               (2017, 4, 4, 18, 1, 19), 3)
+
+    print(planet)

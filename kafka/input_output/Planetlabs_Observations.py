@@ -129,8 +129,8 @@ class PlanetlabsObservations(object):
         # sequential integer numbers. For sentinel 2 these are the
         # strings that are found in the file names of the bands that
         # we use. Can be ditched or modified as needed.
-        self.band_map = ['02', '03', '04', '05', '06', '07',
-                         '08', '8A', '09', '12']
+        # self.band_map = ['02', '03', '04', '05', '06', '07',
+        #                  '08', '8A', '09', '12']
         #
         # # NP Locating emulators. Shouldn't need changing.
         emulators = glob.glob(os.path.join(self.emulator_folder, "*.pkl"))
@@ -245,58 +245,84 @@ class PlanetlabsObservations(object):
         # emulators using python 3 (the encoding variable is there
         # because existing emulator pickles were written in python 2.
         emulator_file = self._find_emulator(sza, saa, vza, vaa)
-        emulator = cPickle.load( open (emulator_file, 'rb'),
+        emulator = cPickle.load(open(emulator_file, 'rb'),
                                  encoding='latin1')
+
+        # Read and reproject S2 surface reflectance
+
+        # NP
+        # Get the file name for this band for this timestep.
+        # band_map maps the internal band number to a string that
+        # identifies the file name.
+
+        original_s2_file = current_file
+        print(original_s2_file)
+
+        # NP
+        # This is here because in the future we may have observations
+        # on a different grid to the grid we retrieve biophysical parameters
+        # on. Jose currently uses the state_mask to define that grid and
+        # reprojects on to that. state_mask is the static grid that is the
+        # same for every timestep (i.e. your field mask)
+        # Probably this function will work on the planet labs data (just
+        # uses gdal) but worth checking
+        g = reproject_image(original_s2_file, self.state_mask)
+
+        # NP Yay! lets read in the reflectance data!
+        rho_surface = (np.array(g.GetRasterBand(band).ReadAsArray(),
+                                dtype=float) / 10000)
+        g = None
+
+        # Extract/create mask file name from current_file
+        splitter = current_file.split("images/")
+        base = splitter[0]
+        identity = splitter[1].split("_subarea")[0]
+        mask_file = base + "mask/" + identity + "_mask_blue.tif"
+
+        # Read in the cloud mask
+        m = reproject_image(mask_file, self.state_mask)
+        m_array = np.array(m.GetRasterBand(1).ReadAsArray())
+        m = None
+        mask = m_array > 0  # Bad data == 0 in the mask
+
+        # NP Apply you wonderful new cloud/good obs mask here!
+        rho_surface = np.where(mask, rho_surface, 0)
+
+        # Read and re-project S2 angles
+        # NP
+        # I presume that this is to map internal band numbering onto
+        # band numbering in the emulator list. When we've made the emulators we
+        # need to make this consistent.
         #
-        # # Read and reproject S2 surface reflectance
+        # TD
+        # This will need revisiting
+        emulator_band_map = [1, 2, 3, 4]
+
+        # NP
+        # Your uncertainties go here. Looks like set to zero where masked
         #
-        # # NP get the file name for this band for this timestep.
-        # # band_map maps the internal band number to a string that
-        # # identifies the file name.
-        # the_band = self.band_map[band]
-        # original_s2_file = os.path.join ( current_folder,
-        #                                  "B{}_sur.tif".format(the_band))
-        # print(original_s2_file)
+        # Adding in 20% for now due to the absolute accuracy per satellite according
+        # to the documents.
+        # See: https://www.planet.com/docs/spec-sheets/sat-imagery/#ps-imagery-product
+        R_mat = rho_surface*0.2
+        R_mat[np.logical_not(mask)] = 0.
+
+        # This is calculating the inverse of the covariance matrix and shouldn't
+        # need modifying
+        N = mask.ravel().shape[0]
+        R_mat_sp = sp.lil_matrix((N, N))
+        R_mat_sp.setdiag(1./(R_mat.ravel())**2)
+        R_mat_sp = R_mat_sp.tocsr()
+
+        # NP
+        # I'll have to get back to you on this... Hopefully all becomes clear
+        # when we've got the emulators. I think it will stay about the same though.
         #
-        # # NP this is here because in the future we may have observations
-        # # on a different grid to the grid we retrieve biophysical parameters
-        # # on. Jose currently uses the state_mask to define that grid and
-        # # reprojects on to that. state_mask is the static grid that is the
-        # # same for every timestep (i.e. your field mask)
-        # # Probably this function will work on the planet labs data (just
-        # # uses gdal) but worth checking
-        # g = reproject_image( original_s2_file, self.state_mask)
-        #
-        # # NP Yay! lets read in the reflectance data!
-        # rho_surface = g.ReadAsArray()
-        #
-        # # NP Apply you wonderful new cloud/good obs mask here!
-        # mask = rho_surface > 0
-        # rho_surface = np.where(mask, rho_surface/10000., 0)
-        #
-        # # Read and reproject S2 angles
-        #
-        # # NP I presume that this is to map internal band numbering onto
-        # # band numbering in the emulator list. When we've made the emulators we
-        # # need to make this consistent.
-        # emulator_band_map = [2, 3, 4, 5, 6, 7, 8, 9, 12, 13]
-        #
-        # # NP Your uncertainties go here. Looks like set to zero where masked
-        # R_mat = rho_surface*0.05
-        # R_mat[np.logical_not(mask)] = 0.
-        #
-        # # This is calculating the inverse of the covariance matrix and shouldn't
-        # # need modifying
-        # N = mask.ravel().shape[0]
-        # R_mat_sp = sp.lil_matrix((N, N))
-        # R_mat_sp.setdiag(1./(R_mat.ravel())**2)
-        # R_mat_sp = R_mat_sp.tocsr()
-        #
-        # # NP I'll have to get back to you on this... Hopefully all becomes clear
-        # # when we've got the emulators. I think it will stay about the same though.
-        # s2_band = bytes("S2A_MSI_{:02d}".format(emulator_band_map[band]), 'latin1' )
-        #
-        # # Create the named tuple (see top of file) to be returned
-        # s2data = planetlabs_data(rho_surface, R_mat_sp, mask, metadata, emulator[s2_band])
-        #
-        # return s2data
+        # TD
+        # This will need revisiting
+        s2_band = bytes("S2A_MSI_{:02d}".format(emulator_band_map[band]), 'latin1')
+
+        # Create the named tuple (see top of file) to be returned
+        s2data = planetlabs_data(rho_surface, R_mat_sp, mask, metadata, emulator[s2_band])
+
+        return s2data
