@@ -246,7 +246,7 @@ class PlanetlabsObservations(object):
         # because existing emulator pickles were written in python 2.
         emulator_file = self._find_emulator(sza, saa, vza, vaa)
         emulator = cPickle.load( open (emulator_file, 'rb'),
-                                 encoding='latin1' )
+                                 encoding='latin1')
         #
         # # Read and reproject S2 surface reflectance
         #
