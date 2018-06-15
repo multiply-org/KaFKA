@@ -426,7 +426,13 @@ class LinearKalman (object):
         P_analysis_inverse = P_analysis_inverse - P_correction
         # Rarely, this returns a small negative value. For now set to nan.
         # May require further investigation in the future
-        P_analysis_inverse[P_analysis_inverse<0] = np.nan
+        negative_values = P_analysis_inverse<0
+        if any(negative_values):
+            P_analysis_inverse[negative_values] = np.nan
+            LOG.warning("{} negative values in inverse covariance matrix".format(
+                sum(negative_values)))
+
+
         import matplotlib.pyplot as plt
         M = self.state_mask*1.
         M[self.state_mask] = x_analysis[6::7]
