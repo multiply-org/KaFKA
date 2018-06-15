@@ -16,22 +16,8 @@ class NoHessianMethod(Exception):
     def __init__(self, message):
         self.message = message
 
-def band_selecta(band):
-    if band == 0:
-        return np.array([0, 1, 6, 2])
-    else:
-        return np.array([3, 4, 6, 5])
-
 
 def hessian_correction_pixel(hessian, C_obs_inv, innovation):
-    '''
-    selecta = band_selecta(band)
-    ddH = gp.hessian(np.atleast_2d(x0[selecta]))
-    big_ddH = np.zeros((nparams, nparams))
-    for i, ii in enumerate(selecta):
-        for j, jj in enumerate(selecta):
-            big_ddH[ii, jj] = ddH.squeeze()[i, j]
-    '''
     hessian_corr = hessian*C_obs_inv*innovation
     return hessian_corr
 
@@ -53,8 +39,6 @@ def hessian_correction(hessian, R_mat, innovation, mask, state_mask,
             # Pixel is masked
             hessian_corr = np.zeros((nparams, nparams))
         else:
-            ## Get state for current pixel
-            #x0_pixel = x0.squeeze()[(nparams*i):(nparams*(i + 1))]
             # Calculate the Hessian correction for this pixel
             hessian_corr = m * hessian_correction_pixel(hess, C, innov)
         little_hess.append(hessian_corr)
@@ -98,43 +82,6 @@ def blend_prior(prior_mean, prior_cov_inverse, x_forecast, P_forecast_inverse):
     x_combined = AI.solve(b)
 
     return x_combined, combined_cov_inv
-
-
-def tip_prior():
-    """The JRC-TIP prior in a convenient function which is fun for the whole
-    family. Note that the effective LAI is here defined in transformed space
-    where TLAI = exp(-0.5*LAIe).
-
-    Returns
-    -------
-    The mean prior vector, covariance and inverse covariance matrices."""
-    # broadly TLAI 0->7 for 1sigma
-    sigma = np.array([0.12, 0.7, 0.0959, 0.15, 1.5, 0.2, 0.5])
-    x0 = np.array([0.17, 1.0, 0.1, 0.7, 2.0, 0.18, np.exp(-0.5*1.5)])
-    # The individual covariance matrix
-    little_p = np.diag(sigma**2).astype(np.float32)
-    little_p[5, 2] = 0.8862*0.0959*0.2
-    little_p[2, 5] = 0.8862*0.0959*0.2
-
-    inv_p = np.linalg.inv(little_p)
-    return x0, little_p, inv_p
-
-def tip_prior_noLAI(prior):
-    n_pixels = prior['n_pixels']
-    mean, prior_cov_inverse = tip_prior(prior)
-
-
-def tip_prior_full(prior):
-    # This is yet to be properly defined. For now it will create the TIP prior and
-    # prior just contains the size of the array - this function will be replaced with
-    # the real code when we know what the priors look like.
-    x_prior, c_prior, c_inv_prior = tip_prior()
-    n_pixels = prior['n_pixels']
-    mean = np.array([x_prior for i in range(n_pixels)]).flatten()
-    c_inv_prior_mat = [c_inv_prior for n in range(n_pixels)]
-    prior_cov_inverse=block_diag(c_inv_prior_mat, dtype=np.float32)
-
-    return mean, prior_cov_inverse
 
 
 def propagate_and_blend_prior(x_analysis, P_analysis, P_analysis_inverse,
@@ -244,9 +191,10 @@ def propagate_information_filter_SLOW(x_analysis, P_analysis, P_analysis_inverse
     S= P_analysis_inverse.dot(Q_matrix)
     A = (sp.eye(n) + S).tocsc()
     P_forecast_inverse = spl.spsolve(A, P_analysis_inverse)
-    logging.info("DOne with propagation")
+    logging.info("Done with propagation")
 
     return x_forecast, None, P_forecast_inverse
+
 
 def propagate_information_filter_approx_SLOW(x_analysis, P_analysis, P_analysis_inverse,
                                  M_matrix, Q_matrix,
@@ -293,35 +241,38 @@ def propagate_information_filter_approx_SLOW(x_analysis, P_analysis, P_analysis_
     return x_forecast, None, P_forecast_inverse
 
 
-def propagate_information_filter_LAI(x_analysis, P_analysis,
-                                     P_analysis_inverse,
-                                     M_matrix, Q_matrix,
-                                     prior=None, state_propagator=None, date=None):
-
+def propagate_single_parameter(x_analysis, P_analysis, P_analysis_inverse,
+                               M_matrix, Q_matrix, n_param, location,
+                               x_prior, c_inv_prior):
+    """ Propagate a single parameter and
+     set the rest of the parameter propagations to the prior.
+     This should be used with a prior for the remaining parameters"""
     x_forecast = M_matrix.dot(x_analysis)
-    x_prior, c_prior, c_inv_prior = tip_prior()
-    n_pixels = len(x_analysis)//7
-    x0 = np.array([x_prior for i in range(n_pixels)]).flatten()
-    x0[6::7] = x_forecast[6::7] # Update LAI
-    lai_post_cov = P_analysis_inverse.diagonal()[6::7]
-    lai_Q = Q_matrix.diagonal()[6::7]
+    n_pixels = len(x_analysis)//n_param
+    x0 = np.tile(x_prior, n_pixels)
+    x0[location::n_param] = x_forecast[location::n_param]  # Update LAI
+    lai_post_cov = P_analysis_inverse.diagonal()[location::n_param]
+    lai_Q = Q_matrix.diagonal()[location::n_param]
 
     c_inv_prior_mat = []
-    for n in range(n_pixels):
+    for cov, Q in zip(lai_post_cov, lai_Q):
         # inflate uncertainty
-        lai_inv_cov = 1.0/((1.0/lai_post_cov[n])+lai_Q[n])
+        lai_inv_cov = 1.0/((1.0/cov)+Q)
         little_P_forecast_inverse = c_inv_prior.copy()
-        little_P_forecast_inverse[6, 6] = lai_inv_cov
+        little_P_forecast_inverse[location::location] = lai_inv_cov
         c_inv_prior_mat.append(little_P_forecast_inverse)
     P_forecast_inverse=block_diag(c_inv_prior_mat, dtype=np.float32)
-
     return x0, None, P_forecast_inverse
+
 
 def no_propagation(x_analysis, P_analysis,
                    P_analysis_inverse,
                    M_matrix, Q_matrix,
                    prior=None, state_propagator=None, date=None):
     """
+    THIS PROPAGATOR SHOULD NOT BE USED ANY MORE. It is better to set
+    the state_propagator to None and to use the Prior exlicitly.
+
     THIS IS ONLY SUITABLE FOR BROADBAND SAIL uses TIP prior
     No propagation. In this case, we return the original prior. As the
     information filter behaviour is the standard behaviour in KaFKA, we

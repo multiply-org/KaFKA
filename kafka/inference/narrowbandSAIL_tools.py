@@ -1,15 +1,18 @@
 import logging
-import numpy as np
-from .utils import block_diag
-import os
 import gdal
+import numpy as np
+import os
+
+from .utils import block_diag
+from .kf_tools import propagate_single_parameter
 
 def sail_prior_values():
     """
     :returns
     -------
     The mean prior vector, covariance and inverse covariance matrices."""
-
+    #parameter_list = ['n', 'cab', 'car', 'cbrown', 'cw', 'cm',
+    #                 'lai', 'ala', 'bsoil', 'psoil']
     mean = np.array([2.1, np.exp(-60. / 100.),
                      np.exp(-7.0 / 100.), 0.1,
                      np.exp(-50 * 0.0176), np.exp(-100. * 0.002),
@@ -30,16 +33,6 @@ class SAILPrior(object):
             self.state_mask = state_mask
         else:
             self.state_mask = self._read_mask(state_mask)
-            # parameter_list = ['n', 'cab', 'car', 'cbrown', 'cw', 'cm',
-            #                 'lai', 'ala', 'bsoil', 'psoil']
-            # self.mean = np.array([1.19, np.exp(-14.4/100.),
-            # np.exp(-4.0/100.), 0.1,
-            # np.exp(-50*0.68), np.exp(-100./21.0),
-            # np.exp(-3.97/2.),70./90., 0.5, 0.9])
-            # sigma = np.array([0.69, 0.016,
-            # 0.0086, 0.1,
-            # 1.71e-2, 0.017,
-            # 0.20, 0.5, 0.5, 0.5])
             mean, c_prior, c_inv_prior = sail_prior_values()
             self.mean = mean
             self.covar = c_prior
@@ -71,8 +64,6 @@ class SAILPrior(object):
             return x0, covar
 
 
-
-
 def propagate_LAI_narrowbandSAIL(x_analysis, P_analysis,
                                      P_analysis_inverse,
                                      M_matrix, Q_matrix,
@@ -84,20 +75,8 @@ def propagate_LAI_narrowbandSAIL(x_analysis, P_analysis,
     lai_position = 6
 
     x_prior, c_prior, c_inv_prior = sail_prior_values()
-
-    x_forecast = M_matrix.dot(x_analysis)
-    n_pixels = len(x_analysis)//nparameters
-    x0 = np.tile(x_prior, n_pixels)
-    x0[lai_position::nparameters] = x_forecast[lai_position::nparameters] # Update LAI
-    lai_post_cov = P_analysis_inverse.diagonal()[lai_position::nparameters]
-    lai_Q = Q_matrix.diagonal()[lai_position::nparameters]
-
-    c_inv_prior_mat = []
-    for cov, Q in zip(lai_post_cov, lai_Q):
-        # inflate uncertainty
-        lai_inv_cov = 1.0/((1.0/cov)+Q)
-        little_P_forecast_inverse = c_inv_prior.copy()
-        little_P_forecast_inverse[lai_position, lai_position] = lai_inv_cov
-        c_inv_prior_mat.append(little_P_forecast_inverse)
-    P_forecast_inverse=block_diag(c_inv_prior_mat, dtype=np.float32)
-    return x0, None, P_forecast_inverse
+    return propagate_single_parameter(x_analysis, P_analysis,
+                                      P_analysis_inverse,
+                                      M_matrix, Q_matrix,
+                                      nparameters, lai_position,
+                                      x_prior, c_inv_prior)

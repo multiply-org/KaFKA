@@ -37,7 +37,6 @@ from .inference import locate_in_lut, run_emulator, create_uncertainty
 from .inference import create_linear_observation_operator
 from .inference import create_nonlinear_observation_operator
 from .inference import iterate_time_grid
-from .inference import propagate_information_filter_LAI # eg
 from .inference import hessian_correction
 from .inference import hessian_correction_multiband
 from .inference.kf_tools import propagate_and_blend_prior
@@ -64,7 +63,7 @@ class LinearKalman (object):
     rather grotty "0-th" order models!"""
     def __init__(self, observations, output, state_mask,
                  create_observation_operator, parameters_list,
-                 state_propagation=propagate_information_filter_LAI,
+                 state_propagation=None,
                  linear=True, diagnostics=True, prior=None):
         """The class creator takes (i) an observations object, (ii) an output
         writer object, (iii) the state mask (a boolean 2D array indicating which
