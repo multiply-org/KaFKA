@@ -81,6 +81,7 @@ if __name__ == "__main__":
     Log = logging.getLogger(__name__+".kafka_test_x.py")
 
     runname = 'Arros_0-25'  #Used in output directory as a unique identifier
+
     # To run without propagation set propagator to None and set a
     # prior in LinearKalman.
     # If propagator is set to propagate_LAI_broadbandSAIL then the
@@ -108,7 +109,7 @@ if __name__ == "__main__":
 
 
 
-    path = "/home/npounder/output/kafka/28Mar/kafkaout_{}".format(runname)
+    path = "/tmp/kafkaout_{}".format(runname)
     if not os.path.exists(path):
         mkdir_p(path)
 
@@ -122,7 +123,6 @@ if __name__ == "__main__":
     bhr_data = BHRObservations(emulator, tile, mcd43a1_dir, start_time,
                                end_time=None, mcd43a2_dir=None, period=8)
 
-    Log.info("runname = {}".format(runname))
     Log.info("propagator = {}".format(propagator))
     Log.info("tile = {}".format(tile))
     Log.info("start_time = {}".format(start_time))
