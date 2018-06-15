@@ -4,7 +4,7 @@ import logging
 logging.basicConfig( 
     level=logging.getLevelName(logging.DEBUG), 
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    filename="the_log.log")
+    filename="logfiles/demo_Campinha_2017_Q0-05.log")
 import os
 from datetime import datetime, timedelta
 import numpy as np
@@ -85,7 +85,7 @@ if __name__ == "__main__":
     Log = logging.getLogger(__name__+".kafka_test_x.py")
 
 
-    runname = 'Campinha_2017_Q0-1'  #Used in output directory as a unique identifier
+    runname = 'Campinha_2017_Q0-05'  #Used in output directory as a unique identifier
 
     # To run without propagation set propagator to None and set a
     # prior in LinearKalman.
@@ -98,11 +98,13 @@ if __name__ == "__main__":
                       'lai', 'ala', 'bsoil', 'psoil']
 
     start_time = "2017001"
+    time_grid_start = datetime(2017, 1, 1)
+    num_days = 366
 
     Log.info("propagator = {}".format(propagator))
     Log.info("start_time = {}".format(start_time))
 
-    path = "/tmp/kafkaout_{}".format(runname)
+    path = "/home/npounder/output/kafka/demo/S2/kafkaout_{}".format(runname)
     if not os.path.exists(path):
         mkdir_p(path)
 
@@ -144,15 +146,13 @@ if __name__ == "__main__":
 
     # Inflation amount for propagation
     Q = np.zeros_like(x_forecast)
-    Q[6::10] = 0.1
+    Q[6::10] = 0.05
 
     kf.set_trajectory_model()
     kf.set_trajectory_uncertainty(Q)
 
     # This determines the time grid of the retrieved state parameters
-    base = datetime(2017,1,1)
-    num_days = 366
-    time_grid = list((base + timedelta(days=x)
+    time_grid = list((time_grid_start + timedelta(days=x)
                      for x in range(0, num_days, 2)))
     kf.run(time_grid, x_forecast, None, P_forecast_inv,
            iter_obs_op=True)

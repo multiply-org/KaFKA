@@ -4,7 +4,7 @@ import logging
 logging.basicConfig(
     level=logging.getLevelName(logging.DEBUG),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    filename="the_log.log")
+    filename="logfiles/MODIS_demo.log")
 import os
 from datetime import datetime, timedelta
 
@@ -80,7 +80,7 @@ if __name__ == "__main__":
     # Set up logging
     Log = logging.getLogger(__name__+".kafka_test_x.py")
 
-    runname = 'Arros_0-25'  #Used in output directory as a unique identifier
+    runname = 'Bondville_0-05'  #Used in output directory as a unique identifier
 
     # To run without propagation set propagator to None and set a
     # prior in LinearKalman.
@@ -92,24 +92,28 @@ if __name__ == "__main__":
                       "w_nir", "x_nir", "a_nir", "TeLAI"]
 
     ## parameters for Bondville data.
-    #tile = "h11v04"      # Bondville
-    #start_time = "2006001"    # Bondville
-    #cd43a1_dir="/data/MODIS/h11v04/MCD43"
+    tile = "h11v04"
+    start_time = "2006001"
+    time_grid_start = datetime(2006, 1, 1)
+    num_days = 366
+    mcd43a1_dir="/data/MODIS/h11v04/MCD43"
     ## Bondville chip
-    #masklim = ((2200, 2450), (450, 700))   # Bondville, h11v04
+    masklim = ((2200, 2400), (450, 700))   # Bondville, h11v04
 
-    # Parameters for Spanish tile
-    tile = "h17v05"      # Spain
-    start_time = "2017001"    # Spain
-    mcd43a1_dir="/data/MODIS/h17v05/MCD43"
-    # chips in h17v05 Spain, select one
-    masklim = ((650, 730), (1180, 1280))     # Arros, rice
+    ## Parameters for Spanish tile
+    #tile = "h17v05"      # Spain
+    #start_time = "2017001"    # Spain
+    #time_grid_start = datetime(2017, 1, 1)
+    #num_days = 366
+    #mcd43a1_dir="/data/MODIS/h17v05/MCD43"
+    ## chips in h17v05 Spain, select one
+    #masklim = ((650, 730), (1180, 1280))     # Arros, rice
     #masklim = ((900,940), (1300,1340)) = True # Alcornocales
     #masklim = ((640,700), (1400,1500)) = True # Campinha
 
 
 
-    path = "/tmp/kafkaout_{}".format(runname)
+    path = "/home/npounder/output/kafka/demo/MODIS/kafkaout_{}".format(runname)
     if not os.path.exists(path):
         mkdir_p(path)
 
@@ -146,17 +150,16 @@ if __name__ == "__main__":
     # Get starting state... We can request the prior object for this
     x_forecast, P_forecast_inv = the_prior.process_prior(None)
 
+    # Inflation amount for propagation
     Q = np.zeros_like(x_forecast)
-    Q[6::7] = 0.25
+    Q[6::7] = 0.05
 
     kf.set_trajectory_model()
     kf.set_trajectory_uncertainty(Q)
 
     # This determines the time grid of the retrieved state parameters
-    base = datetime(2017, 1, 1)
-    num_days = 366
     time_grid = []
     for x in range( 0, num_days, 8):
-        time_grid.append(base + timedelta(days=x))
+        time_grid.append(time_grid_start + timedelta(days=x))
 
     kf.run(time_grid, x_forecast, None, P_forecast_inv, iter_obs_op=True)
