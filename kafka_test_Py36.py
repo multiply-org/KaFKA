@@ -81,6 +81,11 @@ if __name__ == "__main__":
     Log = logging.getLogger(__name__+".kafka_test_x.py")
 
     runname = 'Arros_0-25'  #Used in output directory as a unique identifier
+    # To run without propagation set propagator to None and set a
+    # prior in LinearKalman.
+    # If propagator is set to propagate_LAI_broadbandSAIL then the
+    # prior in LinearKalman must be set to None because this propagator
+    # includes a prior
     propagator = propagate_LAI_broadbandSAIL
     parameter_list = ["w_vis", "x_vis", "a_vis",
                       "w_nir", "x_nir", "a_nir", "TeLAI"]
@@ -127,6 +132,8 @@ if __name__ == "__main__":
 
     output = KafkaOutput(parameter_list, geotransform, projection, path)
 
+    # If using a separate prior then this is passed to LinearKalman
+    # Otherwise this is just used to set the starting state vector.
     the_prior = JRCPrior(parameter_list, mask)
 
     # prior = None when using propagate_LAI_broadbandSAIL
