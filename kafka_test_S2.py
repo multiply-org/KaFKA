@@ -4,7 +4,7 @@ import logging
 logging.basicConfig( 
     level=logging.getLevelName(logging.DEBUG), 
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    filename="Campinha_noprop_2017.log")
+    filename="the_log.log")
 import os
 from datetime import datetime, timedelta
 import numpy as np
@@ -100,7 +100,6 @@ if __name__ == "__main__":
     start_time = "2017001"
 
     Log.info("propagator = {}".format(propagator))
-    Log.info("tile = {}".format(tile))
     Log.info("start_time = {}".format(start_time))
 
     path = "/tmp/kafkaout_{}".format(runname)
@@ -143,6 +142,7 @@ if __name__ == "__main__":
     # Get starting state... We can request the prior object for this
     x_forecast, P_forecast_inv = the_prior.process_prior(None)
 
+    # Inflation amount for propagation
     Q = np.zeros_like(x_forecast)
     Q[6::10] = 0.1
 
