@@ -1,17 +1,16 @@
 #!/usr/bin/env python
 
 import logging
-logging.basicConfig( 
-    level=logging.getLevelName(logging.DEBUG), 
+logging.basicConfig(
+    level=logging.getLevelName(logging.DEBUG),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    filename="the_log.log")
+    filename="logfiles/MODIS_demo.log")
 import os
 from datetime import datetime, timedelta
 
 import numpy as np
 import gdal
 import osr
-import scipy.sparse as sp
 
 # from multiply.inference-engine blah blah blah
 try:
@@ -19,17 +18,16 @@ try:
 except ImportError:
     pass
 
-import kafka
 from kafka.input_output import BHRObservations, KafkaOutput
 from kafka import LinearKalman
-from kafka.inference import block_diag
-from kafka.inference import propagate_information_filter_LAI
-from kafka.inference import no_propagation
+from kafka.inference.broadbandSAIL_tools import propagate_LAI_broadbandSAIL
 from kafka.inference import create_nonlinear_observation_operator
+from kafka.inference.broadbandSAIL_tools import JRCPrior
 
 
 # Probably should be imported from somewhere else, but I can't see
 # where from ATM... No biggy
+
 
 def reproject_image(source_img, target_img, dstSRSs=None):
     """Reprojects/Warps an image to fit exactly another image.
@@ -54,73 +52,6 @@ def reproject_image(source_img, target_img, dstSRSs=None):
                   dstSRS=dstSRS)
     return g
 
-
-
-###class DummyInferencePrior(_WrappingInferencePrior):
-    ###"""
-    ###This class is merely a dummy.
-    ###"""
-
-    ###def process_prior(self, parameters: List[str], time: Union[str, datetime], state_grid: np.array,
-
-
-class JRCPrior(object):
-    """Dummpy 2.7/3.6 prior class following the same interface as 3.6 only
-    version."""
-
-    def __init__ (self, parameter_list, state_mask):
-        """It makes sense to have the list of parameters and state mask
-        defined at this point, as they won't change during processing."""
-        self.mean, self.covar, self.inv_covar = self._tip_prior() 
-        self.parameter_list = parameter_list
-        if isinstance(state_mask, (np.ndarray, np.generic) ):
-            self.state_mask = state_mask
-        else:
-            self.state_mask = self._read_mask(state_mask)
-            
-    def _read_mask(self, fname):
-        """Tries to read the mask as a GDAL dataset"""
-        if not os.path.exists(fname):
-            raise IOError("State mask is neither an array or a file that exists!")
-        g = gdal.Open(fname)
-        if g is None:
-            raise IOError("{:s} can't be opened with GDAL!".format(fname))
-        mask = g.ReadAsArray()
-        return mask
-
-    def _tip_prior(self):
-        """The JRC-TIP prior in a convenient function which is fun for the whole
-        family. Note that the effective LAI is here defined in transformed space
-        where TLAI = exp(-0.5*LAIe).
-
-        Returns
-        -------
-        The mean prior vector, covariance and inverse covariance matrices."""
-        # broadly TLAI 0->7 for 1sigma
-        sigma = np.array([0.12, 0.7, 0.0959, 0.15, 1.5, 0.2, 0.5])
-        x0 = np.array([0.17, 1.0, 0.1, 0.7, 2.0, 0.18, np.exp(-0.5*2.)])
-        # The individual covariance matrix
-        little_p = np.diag(sigma**2).astype(np.float32)
-        little_p[5, 2] = 0.8862*0.0959*0.2
-        little_p[2, 5] = 0.8862*0.0959*0.2
-
-        inv_p = np.linalg.inv(little_p)
-        return x0, little_p, inv_p
-
-    def process_prior ( self, time, inv_cov=True):
-        # Presumably, self._inference_prior has some method to retrieve 
-        # a bunch of files for a given date...
-        n_pixels = self.state_mask.sum()
-        x0 = np.array([self.mean for i in range(n_pixels)]).flatten()
-        if inv_cov:
-            inv_covar_list = [self.inv_covar for m in range(n_pixels)]
-            inv_covar = block_diag(inv_covar_list, dtype=np.float32)
-            return x0, inv_covar
-        else:
-            covar_list = [self.covar for m in xrange(n_pixels)]
-            covar = block_diag(covar_list, dtype=np.float32)
-            return x0, covar
-        
 class KafkaOutputMemory(object):
     """A very simple class to output the state."""
     def __init__(self, parameter_list):
@@ -134,57 +65,101 @@ class KafkaOutputMemory(object):
         self.output[timestep] = solution
 
 
-if __name__ == "__main__":
-    
-    parameter_list = ["w_vis", "x_vis", "a_vis",
-                     "w_nir", "x_nir", "a_nir", "TeLAI"]
-    
-    tile = "h11v04"
-    start_time = "2006185"
-    
-    emulator = "./SAIL_emulator_both_500trainingsamples.pkl"
-    
-    if os.path.exists("/storage/ucfajlg/Ujia/MCD43/"):
-        mcd43a1_dir = "/storage/ucfajlg/Ujia/MCD43/"
-    else:
-        mcd43a1_dir="/data/MODIS/h11v04/MCD43"
-    ####tilewidth = 75
-    ###n_pixels = tilewidth*tilewidth
-    mask = np.zeros((2400,2400),dtype=np.bool8)
-    #mask[900:940, 1300:1340] = True # Alcornocales
-    #mask[640:700, 1400:1500] = True # Campinha
-    #mask[650:730, 1180:1280] = True # Arros
-    mask[ 2200:2395, 450:700 ] = True # Bondville, h11v04
+def mkdir_p(path):
+    try:
+        os.makedirs(path)
+    except OSError as exc:
+        if exc.errno == errno.EEXIST and os.path.isdir(path):
+            pass
+        else:
+            raise
 
-    bhr_data =  BHRObservations(emulator, tile, mcd43a1_dir, start_time,
-                                end_time=None, mcd43a2_dir=None)
+
+if __name__ == "__main__":
+
+    # Set up logging
+    Log = logging.getLogger(__name__+".kafka_test_x.py")
+
+    runname = 'Bondville_0-05'  #Used in output directory as a unique identifier
+
+    # To run without propagation set propagator to None and set a
+    # prior in LinearKalman.
+    # If propagator is set to propagate_LAI_broadbandSAIL then the
+    # prior in LinearKalman must be set to None because this propagator
+    # includes a prior
+    propagator = propagate_LAI_broadbandSAIL
+    parameter_list = ["w_vis", "x_vis", "a_vis",
+                      "w_nir", "x_nir", "a_nir", "TeLAI"]
+
+    ## parameters for Bondville data.
+    tile = "h11v04"
+    start_time = "2006001"
+    time_grid_start = datetime(2006, 1, 1)
+    num_days = 366
+    mcd43a1_dir="/data/MODIS/h11v04/MCD43"
+    ## Bondville chip
+    masklim = ((2200, 2400), (450, 700))   # Bondville, h11v04
+
+    ## Parameters for Spanish tile
+    #tile = "h17v05"      # Spain
+    #start_time = "2017001"    # Spain
+    #time_grid_start = datetime(2017, 1, 1)
+    #num_days = 366
+    #mcd43a1_dir="/data/MODIS/h17v05/MCD43"
+    ## chips in h17v05 Spain, select one
+    #masklim = ((650, 730), (1180, 1280))     # Arros, rice
+    #masklim = ((900,940), (1300,1340)) = True # Alcornocales
+    #masklim = ((640,700), (1400,1500)) = True # Campinha
+
+
+
+    path = "/home/npounder/output/kafka/demo/MODIS/kafkaout_{}".format(runname)
+    if not os.path.exists(path):
+        mkdir_p(path)
+
+    emulator = "./SAIL_emulator_both_500trainingsamples.pkl"
+
+
+    mask = np.zeros((2400,2400),dtype=np.bool8)
+    mask[masklim[0][0]:masklim[0][1],
+         masklim[1][0]:masklim[1][1]] = True
+
+    bhr_data = BHRObservations(emulator, tile, mcd43a1_dir, start_time,
+                               end_time=None, mcd43a2_dir=None, period=8)
+
+    Log.info("propagator = {}".format(propagator))
+    Log.info("tile = {}".format(tile))
+    Log.info("start_time = {}".format(start_time))
+    Log.info("mask = {}".format(masklim))
 
     projection, geotransform = bhr_data.define_output()
 
-    output = KafkaOutput(parameter_list, geotransform, projection, "/tmp/")
+    output = KafkaOutput(parameter_list, geotransform, projection, path)
 
+    # If using a separate prior then this is passed to LinearKalman
+    # Otherwise this is just used to set the starting state vector.
     the_prior = JRCPrior(parameter_list, mask)
-    
-    kf = LinearKalman(bhr_data, output, mask, 
+
+    # prior = None when using propagate_LAI_broadbandSAIL
+    kf = LinearKalman(bhr_data, output, mask,
                       create_nonlinear_observation_operator,parameter_list,
-                      state_propagation=None,
-                      prior=the_prior,
+                      state_propagation=propagator,
+                      prior=None,
                       linear=False)
 
     # Get starting state... We can request the prior object for this
     x_forecast, P_forecast_inv = the_prior.process_prior(None)
-    
+
+    # Inflation amount for propagation
     Q = np.zeros_like(x_forecast)
-    Q[6::7] = 0.025
-    
+    Q[6::7] = 0.05
+
     kf.set_trajectory_model()
     kf.set_trajectory_uncertainty(Q)
-    
-    base = datetime(2006,7,4)
-    num_days = 180
+
+    # This determines the time grid of the retrieved state parameters
     time_grid = []
-    for x in range( 0, num_days, 16):
-        time_grid.append( base + timedelta(days = x) )
+    for x in range( 0, num_days, 8):
+        time_grid.append(time_grid_start + timedelta(days=x))
 
     kf.run(time_grid, x_forecast, None, P_forecast_inv, iter_obs_op=True)
-    

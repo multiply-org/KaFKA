@@ -37,7 +37,6 @@ from .inference import locate_in_lut, run_emulator, create_uncertainty
 from .inference import create_linear_observation_operator
 from .inference import create_nonlinear_observation_operator
 from .inference import iterate_time_grid
-from .inference import propagate_information_filter_LAI # eg
 from .inference import hessian_correction
 from .inference import hessian_correction_multiband
 from .inference.kf_tools import propagate_and_blend_prior
@@ -64,7 +63,7 @@ class LinearKalman (object):
     rather grotty "0-th" order models!"""
     def __init__(self, observations, output, state_mask,
                  create_observation_operator, parameters_list,
-                 state_propagation=propagate_information_filter_LAI,
+                 state_propagation=None,
                  linear=True, diagnostics=True, prior=None):
         """The class creator takes (i) an observations object, (ii) an output
         writer object, (iii) the state mask (a boolean 2D array indicating which
@@ -305,12 +304,27 @@ class LinearKalman (object):
         # Once we have converged...
         # Correct hessian for higher order terms
         #split_points = [m.sum( ) for m in MASK]
+        HESSIAN = []
         INNOVATIONS = np.split(innovations, n_bands)
-        P_correction = hessian_correction_multiband(data.emulator, x_analysis,
+        for band, data in enumerate(current_data):
+                # calculate the hessian for the solution
+                _,_,hessian= self._create_observation_operator(self.n_params,
+                                                         data.emulator,
+                                                         data.metadata,
+                                                         data.mask,
+                                                         self.state_mask,
+                                                         x_analysis,
+                                                         band,
+                                                         calc_hess = True)
+                HESSIAN.append(hessian)
+        P_correction = hessian_correction_multiband(HESSIAN,
                                                     UNC, INNOVATIONS, MASK,
                                                     self.state_mask, n_bands,
                                                     self.n_params)
         P_analysis_inverse = P_analysis_inverse - P_correction
+        # Rarely, this returns a small negative value. For now set to nan.
+        # May require further investigation in the future
+        P_analysis_inverse[P_analysis_inverse<0] = np.nan
 
         # Done with this observation, move along...
         
@@ -407,8 +421,17 @@ class LinearKalman (object):
                                           data.uncertainty, innovations,
                                           data.mask, self.state_mask, band,
                                           self.n_params)
+        # UPDATE HESSIAN WITH HIGHER ORDER CONTRIBUTION
         P_analysis_inverse = P_analysis_inverse - P_correction
-        # P_analysis_inverse = UPDATE HESSIAN WITH HIGHER ORDER CONTRIBUTION
+        # Rarely, this returns a small negative value. For now set to nan.
+        # May require further investigation in the future
+        negative_values = P_analysis_inverse<0
+        if any(negative_values):
+            P_analysis_inverse[negative_values] = np.nan
+            LOG.warning("{} negative values in inverse covariance matrix".format(
+                sum(negative_values)))
+
+
         import matplotlib.pyplot as plt
         M = self.state_mask*1.
         M[self.state_mask] = x_analysis[6::7]
