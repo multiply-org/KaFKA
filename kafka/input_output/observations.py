@@ -325,7 +325,7 @@ class BHRObservationsTest(object):
 class KafkaOutput(object):
     """A very simple class to output the state."""
     def __init__(self, parameter_list, geotransform, projection, folder,
-                 fmt="GTiff"):
+            fmt="GTiff", state_folder:str=None):
         """The inference engine works on tiles, so we get the tilewidth
         (we assume the tiles are square), the GDAL-friendly geotransform
         and projection, as well as the destination directory and the
@@ -333,6 +333,7 @@ class KafkaOutput(object):
         self.geotransform = geotransform
         self.projection = projection
         self.folder = folder
+        self.state_folder = state_folder
         self.fmt = fmt
         self.parameter_list = parameter_list
 
@@ -352,6 +353,7 @@ class KafkaOutput(object):
             A = np.zeros(state_mask.shape, dtype=np.float32)
             A[state_mask] = x_analysis[ii::n_params]
             dst_ds.GetRasterBand(1).WriteArray(A)
+
         for ii, param in enumerate(self.parameter_list):
             fname = os.path.join(self.folder, "%s_%s_unc.tif" %
                                  (param, timestep.strftime("A%Y%j")))
@@ -366,7 +368,20 @@ class KafkaOutput(object):
             A[state_mask] = 1./np.sqrt(P_analysis_inv.diagonal()[ii::n_params])
             dst_ds.GetRasterBand(1).WriteArray(A)
 
+        if not self.state_folder == None and os.path.exists( self.state_folder ):
+            # Dump to disk P_analysis_inv as sparse matrix in npz
+            fname = os.path.join(self.state_folder, "P_analysis_inv_%s.npz" %
+                             ( timestep.strftime("A%Y%j") ) )
+            sp.save_npz( fname, P_analysis_inv )
 
+            fname = os.path.join(self.state_folder, "P_analysis_%s.npz" %
+                             ( timestep.strftime("A%Y%j") ) )
+            np.savez( fname, P_analysis )
+
+            # Dump as well the whole x_analysis in a single vector
+            fname = os.path.join(self.state_folder, "x_analysis_%s.npz" %
+                             ( timestep.strftime("A%Y%j") ) )
+            np.savez( fname, x_analysis )
 
 if __name__ == "__main__":
     emulator = "../SAIL_emulator_both_500trainingsamples.pkl"

@@ -5,6 +5,7 @@ logging.basicConfig(
     level=logging.getLevelName(logging.DEBUG), 
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     filename="logfiles/demo_Campinha_2017_Q0-05.log")
+
 import os
 from datetime import datetime, timedelta
 import numpy as np
@@ -97,22 +98,26 @@ if __name__ == "__main__":
     parameter_list = ['n', 'cab', 'car', 'cbrown', 'cw', 'cm',
                       'lai', 'ala', 'bsoil', 'psoil']
 
-    start_time = "2017001"
-    time_grid_start = datetime(2017, 1, 1)
+    #start_time = "2017001"
+    #time_grid_start = datetime(2017, 1, 1)
+    start_time = "2017049"
+    time_grid_start = datetime(2017, 2, 18)
     num_days = 366
 
     Log.info("propagator = {}".format(propagator))
     Log.info("start_time = {}".format(start_time))
 
-    path = "/home/npounder/output/kafka/demo/S2/kafkaout_{}".format(runname)
+    path = "/tmp/kafka/demo/S2/kafkaout_{}".format(runname)
     if not os.path.exists(path):
         mkdir_p(path)
 
     #emulator_folder = "/home/ucfafyi/DATA/Multiply/emus/sail/"
-    emulator_folder = "/home/glopez/Multiply/src/py36/emus/sail"
+    #emulator_folder = "/home/glopez/Multiply/src/py36/emus/sail"
+    emulator_folder = "/data/archive/emulators/s2_prosail"
 
     #data_folder = "/data/nemesis/S2_data/30/S/WJ/"
-    data_folder = "/data/001_planet_sentinel_study/sentinel/30/S/WJ"
+    #data_folder = "/data/001_planet_sentinel_study/sentinel/30/S/WJ"
+    data_folder = "/data/S2_L2/30/S/WJ/"
 
     state_mask = "./Barrax_pivots.tif"
 
@@ -141,8 +146,20 @@ if __name__ == "__main__":
                       prior=None,#the_prior,
                       linear=False)
 
-    # Get starting state... We can request the prior object for this
-    x_forecast, P_forecast_inv = the_prior.process_prior(None)
+    # Check if there's a prior from a previous timestep
+    P_inv_fname = "P_analysis_inv_%s.npz" % time_grid_start.strftime("A%Y%j")
+    P_inv_fname = os.path.join( path, P_inv_fname )
+
+    x_fname = "x_analysis_%s.npz" % time_grid_start.strftime("A%Y%j")
+    x_fname = os.path.join( path, x_fname )
+
+    if os.path.exists( P_inv_fname ) and os.path.exists( x_fname ):
+        # Load stored matrices...
+        x_forecast = np.load( x_fname )['arr_0']
+        P_forecast_inv = sp.load_npz( P_inv_fname )
+    else:
+        # Get starting state... We can request the prior object for this
+        x_forecast, P_forecast_inv = the_prior.process_prior(None)
 
     # Inflation amount for propagation
     Q = np.zeros_like(x_forecast)
@@ -156,3 +173,4 @@ if __name__ == "__main__":
                      for x in range(0, num_days, 2)))
     kf.run(time_grid, x_forecast, None, P_forecast_inv,
            iter_obs_op=True)
+
