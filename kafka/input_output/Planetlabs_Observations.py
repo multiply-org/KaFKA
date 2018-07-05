@@ -138,7 +138,7 @@ class PlanetlabsObservations(object):
         self.emulator_files = emulators
 
     def define_output(self):
-        # NP I can't see that this is used anywhere at the moment...
+        # NP This is used by the run-script.
         g = gdal.Open(self.state_mask)
         proj = g.GetProjection()
         geoT = np.array(g.GetGeoTransform())
@@ -151,7 +151,6 @@ class PlanetlabsObservations(object):
         """
         Finds granules.
 
-        Currently does so by checking for Feng's AOT file.
         """
 
         # NP
@@ -247,7 +246,8 @@ class PlanetlabsObservations(object):
         emulator_file = self._find_emulator(sza, saa, vza, vaa)
         emulator = cPickle.load(open(emulator_file, 'rb'),
                                  encoding='latin1')
-
+        print(emulator_file)
+        print(emulator)
         # Read and reproject S2 surface reflectance
 
         # NP
@@ -285,7 +285,7 @@ class PlanetlabsObservations(object):
         m = None
         mask = m_array > 0  # Bad data == 0 in the mask
 
-        # NP Apply you wonderful new cloud/good obs mask here!
+        # NP Apply your wonderful new cloud/good obs mask here!
         rho_surface = np.where(mask, rho_surface, 0)
 
         # Read and re-project S2 angles
@@ -296,7 +296,7 @@ class PlanetlabsObservations(object):
         #
         # TD
         # This will need revisiting
-        emulator_band_map = [1, 2, 3, 4]
+        emulator_band_map = ['planetlabs_0f_blue', 'planetlabs_0f_green','planetlabs_0f_red', 'planetlabs_0f_nir']
 
         # NP
         # Your uncertainties go here. Looks like set to zero where masked
@@ -320,9 +320,10 @@ class PlanetlabsObservations(object):
         #
         # TD
         # This will need revisiting
-        s2_band = bytes("S2A_MSI_{:02d}".format(emulator_band_map[band]), 'latin1')
+        planetlabs_band = emulator_band_map[band]
 
         # Create the named tuple (see top of file) to be returned
-        s2data = planetlabs_data(rho_surface, R_mat_sp, mask, metadata, emulator[s2_band])
+        data = planetlabs_data(rho_surface, R_mat_sp, mask,
+                                          metadata, emulator[planetlabs_band])
 
-        return s2data
+        return data
