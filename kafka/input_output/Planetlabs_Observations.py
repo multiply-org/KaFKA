@@ -246,8 +246,7 @@ class PlanetlabsObservations(object):
         emulator_file = self._find_emulator(sza, saa, vza, vaa)
         emulator = cPickle.load(open(emulator_file, 'rb'),
                                  encoding='latin1')
-        print(emulator_file)
-        print(emulator)
+
         # Read and reproject S2 surface reflectance
 
         # NP
@@ -269,7 +268,7 @@ class PlanetlabsObservations(object):
         g = reproject_image(original_s2_file, self.state_mask)
 
         # NP Yay! lets read in the reflectance data!
-        rho_surface = (np.array(g.GetRasterBand(band).ReadAsArray(),
+        rho_surface = (np.array(g.GetRasterBand(band+1).ReadAsArray(),
                                 dtype=float) / 10000)
         g = None
 
