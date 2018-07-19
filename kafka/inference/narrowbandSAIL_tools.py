@@ -46,7 +46,7 @@ class SAILPrior(object):
         g = gdal.Open(fname)
         if g is None:
             raise IOError("{:s} can't be opened with GDAL!".format(fname))
-        mask = g.ReadAsArray()
+        mask = g.ReadAsArray().astype(int)
         return mask
 
     def process_prior ( self, time, inv_cov=True):
