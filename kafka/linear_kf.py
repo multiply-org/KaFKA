@@ -183,8 +183,8 @@ class LinearKalman (object):
                 x_forecast, P_forecast, P_forecast_inverse = self.advance(
                     x_analysis, P_analysis, P_analysis_inverse,
                     self.trajectory_model, self.trajectory_uncertainty)
-
             is_first = False
+
             if len(locate_times) == 0:
                 # Just advance the time
                 x_analysis = x_forecast
@@ -256,14 +256,22 @@ class LinearKalman (object):
                 # Also extract single band information from nice package
                 # this allows us to use the same interface as current
                 # Deferring processing to a new solver method in solvers.py
-                
-                H_matrix_= self._create_observation_operator(self.n_params,
+
+                try:
+                    H_matrix_= self._create_observation_operator(self.n_params,
                                                          data.emulator,
                                                          data.metadata,
                                                          data.mask,
                                                          self.state_mask,
                                                          x_prev,
-                                                         band)
+                                                         band,
+                                                         calc_hess = False)
+                except ValueError as e:
+                    if (sum(data.mask[self.state_mask])== 0):
+                        LOG.error("All observations masked out")
+                    raise
+
+
                 H_matrix.append(H_matrix_)
                 Y.append(data.observations)
                 MASK.append(data.mask)
