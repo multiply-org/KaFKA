@@ -228,7 +228,15 @@ def create_prosail_observation_operator(n_params, emulator, metadata,
     LOG.info("\tDone!")
 
     if calc_hess:
-        hess = emulator.hessian(x0[mask[state_mask]])
+        hess = np.zeros((n_times, n_params, n_params),
+                             dtype=np.float32)
+        hess_ = emulator.hessian(x0[mask[state_mask]])
+
+        n = 0
+        for i, m in enumerate(mask[state_mask].flatten()):
+            if m:
+                hess[i, ...] = hess_[n]
+                n += 1
 
     return (H0, H_matrix.tocsr(), hess) if calc_hess else (H0, H_matrix.tocsr())
 
@@ -357,7 +365,7 @@ def spsolve2(a, b):
     a_lu = spl.splu(a.tocsc())   # LU decomposition for sparse a
     out = sp.lil_matrix((a.shape[1], b.shape[1]), dtype=np.float32)
     b_csc = b.tocsc()
-    for j in xrange(b.shape[1]):
+    for j in range(b.shape[1]):
         bb = np.array(b_csc[j, :].todense()).squeeze()
         out[j, j] = a_lu.solve(bb)[j]
     return out.tocsr()
