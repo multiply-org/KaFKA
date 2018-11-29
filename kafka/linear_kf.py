@@ -240,12 +240,12 @@ class LinearKalman (object):
     def do_all_bands(self, timestep, current_data, x_forecast, P_forecast,
                         P_forecast_inverse, convergence_tolerance=1e-3,
                         min_iterations=2):
-        not_converged = True
+        converged = False
         # Linearisation point is set to x_forecast for first iteration
         x_prev = x_forecast*1.
         n_iter = 1
         n_bands = len(current_data)
-        while not_converged:
+        while not converged:
             Y = []
             MASK = []
             UNC = []
@@ -300,11 +300,11 @@ class LinearKalman (object):
             if (convergence_norm < convergence_tolerance) and (
                     n_iter >= min_iterations):
                 # Converged!
-                not_converged = False
-            elif n_iter > 25:
+                converged = True
+            elif n_iter >= 25:
                 # Too many iterations
                 LOG.warning("Bailing out after 25 iterations!!!!!!")
-                not_converged = False
+                converged = True
 
             x_prev = x_analysis*1.
             n_iter += 1
