@@ -51,13 +51,17 @@ def hessian_correction_multiband(hessians, R_mats, innovations,
                                  masks, state_mask, n_bands, nparams):
     """ Non linear correction for the Hessian of the cost function. This handles
     multiple bands. """
-    little_hess_cor = []
-    for R, hessian, innovation, mask in zip(
-            R_mats, hessians, innovations, masks):
-        little_hess_cor.append(hessian_correction(hessian, R, innovation,
-                                                  mask, state_mask, nparams))
-    hessian_corr = sum(little_hess_cor)
-    return hessian_corr
+    R, hessian, innovation, mask = 0
+    try:
+        little_hess_cor = []
+        for R, hessian, innovation, mask in zip(
+                R_mats, hessians, innovations, masks):
+            little_hess_cor.append(hessian_correction(hessian, R, innovation, mask, state_mask, nparams))
+        hessian_corr = sum(little_hess_cor)
+        return hessian_corr
+    except ValueError:
+        logging.info(R.shape, hessian.shape, innovation.shape, mask.shape)
+        return 0
 
 
 def blend_prior(prior_mean, prior_cov_inverse, x_forecast, P_forecast_inverse):
