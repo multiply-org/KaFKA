@@ -30,9 +30,6 @@ import numpy as np
 
 import scipy.sparse as sp
 import scipy.sparse.linalg as spl
-import datetime as dt
-import os
-import gdal
 
 import logging
 LOG = logging.getLogger(__name__)
@@ -158,7 +155,6 @@ def create_nonlinear_observation_operator(n_params, emulator, metadata,
     # It might be here that we do some sort of clustering
 
     H0_, dH = run_emulator(emulator, x0[mask[state_mask]])
-    H0_, dH = run_emulator2(emulator, x0[mask[state_mask]])
 
     LOG.info("Storing emulators in H matrix")
     # This loop can be JIT'ed too
@@ -214,7 +210,6 @@ def create_prosail_observation_operator(n_params, emulator, metadata,
     # It might be here that we do some sort of clustering
 
     H0_, dH = run_emulator(emulator, x0[mask[state_mask]])
-    H0_, dH = run_emulator2(emulator, x0[mask[state_mask]])
 
     LOG.info("Storing emulators in H matrix")
     # This loop can be JIT'ed too
