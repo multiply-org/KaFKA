@@ -27,15 +27,8 @@ import numpy as np
 
 import scipy.sparse as sp
 
-# from scipy.spatial.distance import squareform, pdist
-
-# from utils import  matrix_squeeze, spsolve2, reconstruct_array
-
 from .inference import variational_kalman
 from .inference import variational_kalman_multiband
-from .inference import locate_in_lut, run_emulator, create_uncertainty
-from .inference import create_linear_observation_operator
-from .inference import create_nonlinear_observation_operator
 from .inference import iterate_time_grid
 from .inference import hessian_correction
 from .inference import hessian_correction_multiband
