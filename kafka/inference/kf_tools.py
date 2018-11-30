@@ -51,7 +51,10 @@ def hessian_correction_multiband(hessians, R_mats, innovations,
                                  masks, state_mask, n_bands, nparams):
     """ Non linear correction for the Hessian of the cost function. This handles
     multiple bands. """
-    R, hessian, innovation, mask = 0
+    R = []
+    hessian = []
+    innovation = []
+    mask = []
     try:
         little_hess_cor = []
         for R, hessian, innovation, mask in zip(
