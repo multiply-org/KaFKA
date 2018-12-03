@@ -383,6 +383,11 @@ class KafkaOutput(object):
                              ( timestep.strftime("A%Y%j") ) )
             np.savez( fname, x_analysis )
 
+            # ... and the state mask ...
+            fname = os.path.join(self.state_folder, "state_mask_%s.npz" %
+                             ( timestep.strftime("A%Y%j") ) )
+            np.savez( fname, state_mask )
+
 if __name__ == "__main__":
     emulator = "../SAIL_emulator_both_500trainingsamples.pkl"
     tile = "h17v05"
