@@ -36,7 +36,6 @@ LOG = logging.getLogger(__name__)
 
 
 def iterate_time_grid(time_grid, the_dates):
-    is_first = True
     istart_date = time_grid[0]
     for ii, timestep in enumerate(time_grid[1:]):
         # First locate all available observations for time step of interest.
@@ -52,11 +51,7 @@ def iterate_time_grid(time_grid, the_dates):
         for iobs in locate_times:
                 LOG.info("\t->{}".format(iobs.strftime("%Y-%m-%d")))
         istart_date = timestep
-        if is_first:
-            yield timestep, locate_times, True
-            is_first = False
-        else:
-            yield timestep, locate_times, False
+        yield timestep, locate_times
 
 
 def run_emulator(gp, x, tol=None):

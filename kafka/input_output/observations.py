@@ -368,15 +368,15 @@ class KafkaOutput(object):
             A[state_mask] = 1./np.sqrt(P_analysis_inv.diagonal()[ii::n_params])
             dst_ds.GetRasterBand(1).WriteArray(A)
 
+    def dump_state(self, timestep, x_analysis, P_analysis, P_analysis_inv, state_mask):
         if not self.state_folder == None and os.path.exists( self.state_folder ):
             # Dump to disk P_analysis_inv as sparse matrix in npz
-            fname = os.path.join(self.state_folder, "P_analysis_inv_%s.npz" %
-                             ( timestep.strftime("A%Y%j") ) )
-            sp.save_npz( fname, P_analysis_inv )
-
-            fname = os.path.join(self.state_folder, "P_analysis_%s.npz" %
-                             ( timestep.strftime("A%Y%j") ) )
-            np.savez( fname, P_analysis )
+            if P_analysis_inv is not None:
+                fname = os.path.join(self.state_folder, "P_analysis_inv_%s.npz" % ( timestep.strftime("A%Y%j") ) )
+                sp.save_npz( fname, P_analysis_inv )
+            if P_analysis is not None:
+                fname = os.path.join(self.state_folder, "P_analysis_%s.npz" % ( timestep.strftime("A%Y%j") ) )
+                np.savez( fname, P_analysis )
 
             # Dump as well the whole x_analysis in a single vector
             fname = os.path.join(self.state_folder, "x_analysis_%s.npz" %
@@ -387,6 +387,7 @@ class KafkaOutput(object):
             fname = os.path.join(self.state_folder, "state_mask_%s.npz" %
                              ( timestep.strftime("A%Y%j") ) )
             np.savez( fname, state_mask )
+
 
 if __name__ == "__main__":
     emulator = "../SAIL_emulator_both_500trainingsamples.pkl"

@@ -166,17 +166,8 @@ class LinearKalman (object):
 
         The time_grid ought to be a list with the time steps given in the same
         form as self.observation_times"""
-        for timestep, locate_times, is_first in iterate_time_grid(
-            time_grid, self.observations.dates):
-
+        for timestep, locate_times in iterate_time_grid(time_grid, self.observations.dates):
             self.current_timestep = timestep
-
-            if not is_first:
-                LOG.info("Advancing state, %s" % timestep.strftime("%Y-%m-%d"))
-                x_forecast, P_forecast, P_forecast_inverse = self.advance(
-                    x_analysis, P_analysis, P_analysis_inverse,
-                    self.trajectory_model, self.trajectory_uncertainty)
-            is_first = False
 
             if len(locate_times) == 0:
                 # Just advance the time
@@ -187,7 +178,6 @@ class LinearKalman (object):
 
             else:
                 # We do have data, so we assimilate
-
                 x_analysis, P_analysis, P_analysis_inverse = self.assimilate_multiple_bands(
                                      locate_times, x_forecast, P_forecast,
                                      P_forecast_inverse,
@@ -196,8 +186,13 @@ class LinearKalman (object):
                                      iter_obs_op=iter_obs_op,
                                      is_robust=is_robust, diag_str=diag_str)
             LOG.info("Dumping results to disk")
-            self.output.dump_data(timestep, x_analysis, P_analysis,
-                                  P_analysis_inverse, self.state_mask, self.n_params)
+            self.output.dump_data(timestep, x_analysis, P_analysis, P_analysis_inverse, self.state_mask, self.n_params)
+            LOG.info("Advancing state, %s" % timestep.strftime("%Y-%m-%d"))
+            x_forecast, P_forecast, P_forecast_inverse = self.advance(x_analysis, P_analysis, P_analysis_inverse,
+                                                                      self.trajectory_model,
+                                                                      self.trajectory_uncertainty)
+            self.output.dump_state(timestep, x_forecast, P_forecast, P_forecast_inverse, self.state_mask)
+
 
     def assimilate_multiple_bands(self, locate_times, x_forecast, P_forecast,
                    P_forecast_inverse,
