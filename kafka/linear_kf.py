@@ -300,27 +300,28 @@ class LinearKalman (object):
         # Once we have converged...
         # Correct hessian for higher order terms
         #split_points = [m.sum( ) for m in MASK]
-        HESSIAN = []
-        INNOVATIONS = np.split(innovations, n_bands)
-        for band, data in enumerate(current_data):
+        #todo include this part. Rather than commenting out, we should decide whether to correct or not
+        # HESSIAN = []
+        # INNOVATIONS = np.split(innovations, n_bands)
+        # for band, data in enumerate(current_data):
                 # calculate the hessian for the solution
-                _,_,hessian= self._create_observation_operator(self.n_params,
-                                                         data.emulator,
-                                                         data.metadata,
-                                                         data.mask,
-                                                         self.state_mask,
-                                                         x_analysis,
-                                                         band,
-                                                         calc_hess = True)
-                HESSIAN.append(hessian)
-        P_correction = hessian_correction_multiband(HESSIAN,
-                                                    UNC, INNOVATIONS, MASK,
-                                                    self.state_mask, n_bands,
-                                                    self.n_params)
-        P_analysis_inverse = P_analysis_inverse - P_correction
+                # _,_,hessian= self._create_observation_operator(self.n_params,
+                #                                          data.emulator,
+                #                                          data.metadata,
+                #                                          data.mask,
+                #                                          self.state_mask,
+                #                                          x_analysis,
+                #                                          band,
+                #                                          calc_hess = True)
+                # HESSIAN.append(hessian)
+        # P_correction = hessian_correction_multiband(HESSIAN,
+        #                                             UNC, INNOVATIONS, MASK,
+        #                                             self.state_mask, n_bands,
+        #                                             self.n_params)
+        # P_analysis_inverse = P_analysis_inverse - P_correction
         # Rarely, this returns a small negative value. For now set to nan.
         # May require further investigation in the future
-        P_analysis_inverse[P_analysis_inverse<0] = np.nan
+        # P_analysis_inverse[P_analysis_inverse<0] = np.nan
 
         # Done with this observation, move along...
         
@@ -412,20 +413,21 @@ class LinearKalman (object):
 
             x_prev = x_analysis
             n_iter += 1
+        #todo include this part. Rather than commenting out, we should decide whether to correct or not
         # Correct hessian for higher order terms
-        P_correction = hessian_correction(data.emulator, x_analysis,
-                                          data.uncertainty, innovations,
-                                          data.mask, self.state_mask, band,
-                                          self.n_params)
+        # P_correction = hessian_correction(data.emulator, x_analysis,
+        #                                   data.uncertainty, innovations,
+        #                                   data.mask, self.state_mask, band,
+        #                                   self.n_params)
         # UPDATE HESSIAN WITH HIGHER ORDER CONTRIBUTION
-        P_analysis_inverse = P_analysis_inverse - P_correction
+        # P_analysis_inverse = P_analysis_inverse - P_correction
         # Rarely, this returns a small negative value. For now set to nan.
         # May require further investigation in the future
-        negative_values = P_analysis_inverse<0
-        if any(negative_values):
-            P_analysis_inverse[negative_values] = np.nan
-            LOG.warning("{} negative values in inverse covariance matrix".format(
-                sum(negative_values)))
+        # negative_values = P_analysis_inverse<0
+        # if any(negative_values):
+        #     P_analysis_inverse[negative_values] = np.nan
+        #     LOG.warning("{} negative values in inverse covariance matrix".format(
+        #         sum(negative_values)))
 
 
         import matplotlib.pyplot as plt
