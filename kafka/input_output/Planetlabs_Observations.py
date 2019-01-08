@@ -123,7 +123,7 @@ class PlanetlabsObservations(object):
         #           for S2 this is fixed at 10 for every observation. That might
         #           make sense for you too.
         self._find_granules()
-
+        self._clean_granules()
         # NP band_map is used to map internal band numbers on to
         # values in the data file names. Internally the bands have
         # sequential integer numbers. For sentinel 2 these are the
@@ -194,6 +194,21 @@ class PlanetlabsObservations(object):
         for the_date in self.dates:
             self.bands_per_observation[the_date] = 4
 
+
+    def _clean_granules(self):
+        g = gdal.Open(self.state_mask)
+        s_mask = g.ReadAsArray().astype(np.bool)
+        to_remove = []
+        for date, thefile in self.date_data.items():
+            print(thefile)
+            mask = self.get_mask(thefile)
+            if sum(mask[s_mask]) == 0:
+                to_remove.append(date)
+        for date in to_remove:
+            del self.date_data[date]
+            self.dates.remove(date)
+
+
     def _find_emulator(self, sza, saa, vza, vaa):
         raa = vaa - saa
         vzas = np.array([float(s.split("_")[-3])
@@ -254,8 +269,8 @@ class PlanetlabsObservations(object):
         # band_map maps the internal band number to a string that
         # identifies the file name.
 
-        original_s2_file = current_file
-        print(original_s2_file)
+        original_planet_file = current_file
+        print(original_planet_file)
 
         # NP
         # This is here because in the future we may have observations
@@ -265,7 +280,7 @@ class PlanetlabsObservations(object):
         # same for every timestep (i.e. your field mask)
         # Probably this function will work on the planet labs data (just
         # uses gdal) but worth checking
-        g = reproject_image(original_s2_file, self.state_mask)
+        g = reproject_image(original_planet_file, self.state_mask)
 
         # NP Yay! lets read in the reflectance data!
         rho_surface = (np.array(g.GetRasterBand(band+1).ReadAsArray(),
@@ -273,7 +288,7 @@ class PlanetlabsObservations(object):
         g = None
 
         # Extract/create mask file name from current_file
-        splitter = current_file.split("images/")
+        '''splitter = current_file.split("images/")
         base = splitter[0]
         identity = splitter[1].split("_subarea")[0]
         mask_file = base + "mask/" + identity + "_mask_blue.tif"
@@ -282,7 +297,8 @@ class PlanetlabsObservations(object):
         m = reproject_image(mask_file, self.state_mask)
         m_array = np.array(m.GetRasterBand(1).ReadAsArray())
         m = None
-        mask = m_array > 0  # Bad data == 0 in the mask
+        mask = m_array > 0  # Bad data == 0 in the mask'''
+        mask = self.get_mask(current_file)
 
         # NP Apply your wonderful new cloud/good obs mask here!
         rho_surface = np.where(mask, rho_surface, 0)
@@ -326,3 +342,17 @@ class PlanetlabsObservations(object):
                                           metadata, emulator[planetlabs_band])
 
         return data
+
+    def get_mask(self, current_file):
+        # Extract/create mask file name from current_file
+        splitter = current_file.split("images/")
+        base = splitter[0]
+        identity = splitter[1].split("_subarea")[0]
+        mask_file = base + "mask/" + identity + "_mask_blue.tif"
+
+        # Read in the cloud mask
+        m = reproject_image(mask_file, self.state_mask)
+        m_array = np.array(m.GetRasterBand(1).ReadAsArray())
+        m = None
+        mask = m_array > 0  # Bad data == 0 in the mask)
+        return mask
