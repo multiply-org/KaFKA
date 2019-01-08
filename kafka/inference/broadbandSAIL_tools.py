@@ -16,8 +16,20 @@ def tip_prior_values():
     -------
     The mean prior vector, covariance and inverse covariance matrices."""
     # broadly TLAI 0->7 for 1sigma
-    sigma = np.array([0.12, 0.7, 0.0959, 0.15, 1.5, 0.2, 0.5])
+
+    # Jose's params based on Pinty prior with altered LAI
+    #sigma = np.array([0.12, 0.7, 0.0959, 0.15, 1.5, 0.2, 0.5])
+    #x0 = np.array([0.17, 1.0, 0.1, 0.7, 2.0, 0.18, np.exp(-0.5*1)])
+
+    # Pinty prior values (Note his prior is not for transformed LAI
+    # he uses LAI = 1.5 +-5).
+    sigma = np.array([0.12, 0.7, 0.0959, 0.15, 1.5, 0.2, 1.0])
     x0 = np.array([0.17, 1.0, 0.1, 0.7, 2.0, 0.18, np.exp(-0.5*1.5)])
+
+    # Prior values for green leaves
+    #sigma = np.array([0.14, 0.7, 0.0959, 0.014, 1.5, 0.2, 1.0])
+    #x0 = np.array([0.13, 1.0, 0.1, 0.77, 2.0, 0.18, np.exp(-0.5*1.5)])
+
     # The individual covariance matrix
     little_p = np.diag(sigma**2).astype(np.float32)
     little_p[5, 2] = 0.8862*0.0959*0.2
@@ -50,6 +62,7 @@ class JRCPrior(object):
             raise IOError("{:s} can't be opened with GDAL!".format(fname))
         mask = g.ReadAsArray()
         return mask
+
 
     def _tip_prior(self):
         """The JRC-TIP prior in a convenient function which is fun for the whole
