@@ -242,6 +242,7 @@ class LinearKalman (object):
                         min_iterations=2):
         not_converged = True
         # Linearisation point is set to x_forecast for first iteration
+        #print(x_forecast)
         x_prev = x_forecast*1.
         n_iter = 1
         n_bands = len(current_data)
@@ -268,6 +269,7 @@ class LinearKalman (object):
                                                          calc_hess = False)
                 except ValueError as e:
                     if (sum(data.mask[self.state_mask])== 0):
+                        print("All observations masked out")
                         LOG.error("All observations masked out")
                     raise
 
@@ -329,10 +331,11 @@ class LinearKalman (object):
                                                     UNC, INNOVATIONS, MASK,
                                                     self.state_mask, n_bands,
                                                     self.n_params)
+        P_analysis_inverse_uncorrected = P_analysis_inverse
         P_analysis_inverse = P_analysis_inverse - P_correction
-        # Rarely, this returns a small negative value. For now set to nan.
-        # May require further investigation in the future
-        P_analysis_inverse[P_analysis_inverse<0] = np.nan
+        # Rarely, this returns a small negative value.
+        # Remove the correction for those cases
+        P_analysis_inverse[P_analysis_inverse < 0] = P_analysis_inverse_uncorrected[P_analysis_inverse < 0]
 
         # Done with this observation, move along...
         
