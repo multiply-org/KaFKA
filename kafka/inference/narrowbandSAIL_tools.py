@@ -17,10 +17,14 @@ def sail_prior_values():
                      np.exp(-7.0 / 100.), 0.1,
                      np.exp(-50 * 0.0176), np.exp(-100. * 0.002),
                      np.exp(-4. / 2.), 70. / 90., 0.5, 0.9])
+    #sigma = np.array([0.01, 0.2,
+    #                          0.01, 0.05,
+    #                          0.01, 0.01,
+    #                          0.50, 0.1, 0.1, 0.1])
     sigma = np.array([0.01, 0.2,
                               0.01, 0.05,
                               0.01, 0.01,
-                              0.50, 0.1, 0.1, 0.1])
+                              1.0, 0.1, 0.1, 0.1])
 
     covar = np.diag(sigma ** 2).astype(np.float32)
     inv_covar = np.diag(1. / sigma ** 2).astype(np.float32)
