@@ -1,8 +1,7 @@
 from collections import namedtuple
 
-# NP the observation operator returns a named tuple so this is needed
-highres_data = namedtuple('planetlabs_data',
-                          'observations uncertainty mask metadata emulator')
+#highres_data = namedtuple('planetlabs_data',
+#                          'observations uncertainty mask metadata emulator')
 
 
 class HighresObservations(object):
