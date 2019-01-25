@@ -76,22 +76,20 @@ S2MSIdata = namedtuple('S2MSIdata',
                      'observations uncertainty mask metadata emulator')
 
 class Sentinel2Observations(object):
-    def __init__(self, parent_folder, emulator_folder, state_mask, input_bands):
+    def __init__(self, parent_folder, emulator_folder, state_mask):
         if not os.path.exists(parent_folder):
             raise IOError("S2 data folder doesn't exist")
-        
-        # Here is where you set the bands you are interested in
-        #in my case, only the ones that are corrected through SIAC 
-        # and also have emulators plotted for them        
-        #self.band_map = ['02', '03', '04', '08', '12']
-        self.band_map = input_bands
-        ###########################################################
-        
         self.parent = parent_folder
         self.emulator_folder = emulator_folder
         self.state_mask = state_mask
         self._find_granules(self.parent)
 
+        # Here is where you set the bands you are interested in
+        #in my case, only the ones that are corrected through SIAC 
+        # and also have emulators plotted for them        
+        self.band_map = ['02', '03', '04',
+                         '08', '12']
+        ###########################################################
         emulators = glob.glob(os.path.join(self.emulator_folder, "*.pkl"))
         emulators.sort()
         self.emulator_files = emulators
@@ -131,7 +129,7 @@ class Sentinel2Observations(object):
         for the_date in self.dates:
             #self.bands_per_observation[the_date] = 5 # 10 bands
             #  Put number of bands you are using here
-            self.bands_per_observation[the_date] = len(self.band_map)
+            self.bands_per_observation[the_date] = 5
 
     def _find_emulator(self, sza, saa, vza, vaa):
         raa = vaa - saa
@@ -192,7 +190,7 @@ class Sentinel2Observations(object):
         # Read and reproject S2 angles
         
         # ae to make finding the right emulator more intuative
-        band_dictionary = {'02':2, '03': 3, '04': 4, '05': 5, '06': 6, '07':7, '08': 8, '8A': 9, '09': 10, '11': 12, '12': 13}
+        band_dictionary = {'02':2, '03': 3, '04': 4, '05': 5, '06': 6, '07':7, '08': 8, '11': 12, '12': 13}
         
         emulator_band_map = []
         for i in self.band_map:

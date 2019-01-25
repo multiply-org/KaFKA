@@ -20,8 +20,8 @@ def sail_prior_values():
     sigma = np.array([0.01, 0.2,
                               0.01, 0.05,
                               0.01, 0.01,
-                              0.50, 0.1, 0.1, 0.1])
-
+                              0.5, 0.1, 0.1, 0.1])
+                              
     covar = np.diag(sigma ** 2).astype(np.float32)
     inv_covar = np.diag(1. / sigma ** 2).astype(np.float32)
     return mean, covar, inv_covar
@@ -52,7 +52,7 @@ class SAILPrior(object):
     def process_prior ( self, time, inv_cov=True):
         # Presumably, self._inference_prior has some method to retrieve
         # a bunch of files for a given date...
-        n_pixels = self.state_mask.sum()
+        n_pixels = int(self.state_mask.sum())
         x0 = np.array([self.mean for i in range(n_pixels)]).flatten()
         if inv_cov:
             inv_covar_list = [self.inv_covar for m in range(n_pixels)]

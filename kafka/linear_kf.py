@@ -160,6 +160,8 @@ class LinearKalman (object):
         as relevant metadata
         """
         data = self.observations.get_band_data(timestep, band)
+        
+        
         return (data.observations, data.uncertainty, data.mask,
                 data.metadata, data.emulator)
 
@@ -173,6 +175,8 @@ class LinearKalman (object):
 
         The time_grid ought to be a list with the time steps given in the same
         form as self.observation_times"""
+        
+       
         for timestep, locate_times, is_first in iterate_time_grid(
             time_grid, self.observations.dates):
 
@@ -195,6 +199,8 @@ class LinearKalman (object):
             else:
                 # We do have data, so we assimilate
 
+                print ('Doing DA')
+
                 x_analysis, P_analysis, P_analysis_inverse = self.assimilate_multiple_bands(
                                      locate_times, x_forecast, P_forecast,
                                      P_forecast_inverse,
@@ -203,9 +209,12 @@ class LinearKalman (object):
                                      iter_obs_op=iter_obs_op,
                                      is_robust=is_robust, diag_str=diag_str)
             LOG.info("Dumping results to disk")
+            
             self.output.dump_data(timestep, x_analysis, P_analysis,
                                   P_analysis_inverse, self.state_mask, self.n_params)
-
+                                  
+           
+            
     def assimilate_multiple_bands(self, locate_times, x_forecast, P_forecast,
                    P_forecast_inverse,
                    approx_diagonal=True, refine_diag=False,

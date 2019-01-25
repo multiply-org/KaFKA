@@ -16,7 +16,7 @@ def tip_prior_values():
     -------
     The mean prior vector, covariance and inverse covariance matrices."""
     # broadly TLAI 0->7 for 1sigma
-    sigma = np.array([0.12, 0.7, 0.0959, 0.15, 1.5, 0.2, 0.5])
+    sigma = np.array([0.12, 0.7, 0.0959, 0.15, 1.5, 0.2, 1.0])
     x0 = np.array([0.17, 1.0, 0.1, 0.7, 2.0, 0.18, np.exp(-0.5*1.5)])
     # The individual covariance matrix
     little_p = np.diag(sigma**2).astype(np.float32)
