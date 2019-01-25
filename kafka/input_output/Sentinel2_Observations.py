@@ -77,13 +77,16 @@ S2MSIdata = namedtuple('S2MSIdata',
 
 class Sentinel2Observations(object):
     def __init__(self, parent_folder, emulator_folder, state_mask,
-                 input_bands=['02', '03', '04', '05', '06', '07',
-                              '08', '8A', '09', '12']):
+                 input_bands=None):
         if not os.path.exists(parent_folder):
             raise IOError("S2 data folder doesn't exist")
         
         # Here is where you set the bands you are interested in
-        self.band_map = input_bands
+        if input_bands is None:
+            self.band_map = ['02', '03', '04', '05', '06', '07',
+                              '08', '8A', '09', '12']
+        else:
+            self.band_map = input_bands
         self.parent = parent_folder
         self.emulator_folder = emulator_folder
         self.state_mask = state_mask
