@@ -198,9 +198,6 @@ class LinearKalman (object):
 
             else:
                 # We do have data, so we assimilate
-
-                print ('Doing DA')
-
                 x_analysis, P_analysis, P_analysis_inverse = self.assimilate_multiple_bands(
                                      locate_times, x_forecast, P_forecast,
                                      P_forecast_inverse,

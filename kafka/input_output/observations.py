@@ -294,26 +294,18 @@ class BHRObservations(RetrieveBRDFDescriptors):
         R_mat_sp = sp.lil_matrix((N, N))
         R_mat_sp.setdiag(1./(R_mat.ravel())**2)
         R_mat_sp = R_mat_sp.tocsr()
-        
-        # ae
-        import pickle
-        save = pickle.dump(np.array([bhr,mask,R_mat_sp]), open('get_data_example.pkl','wb'))
-        print (bhr.shape,mask.shape,R_mat_sp.shape)
-        print ('saved')
-        raise ValueError('here')
-        
         bhr_data = BHR_data(bhr, mask, R_mat_sp, None, self.emulator)
         
         return bhr_data
         
-class MULObservations(object):
+class MOLCIObservations(object):
     """
     An object to store dates, files and structured data objects for running Kafka
     Inferance engine with custom generated albedo parameter data.
     """
     
-    def __init__(self,emulator,tile,directory,start_time,
-                 ulx=0, uly=0, dx=1200, dy=1200,end_time=None):
+    def __init__(self, emulator, tile, directory, start_time,
+                 ulx=0, uly=0, dx=1200, dy=1200, end_time=None):
         
         fnames = glob.glob('%s%s/'%(directory,tile)+'BRDF_Para*MOLCI_BB.tif')
         start_time = datetime.datetime.strptime(start_time, "%Y%j")
@@ -321,7 +313,6 @@ class MULObservations(object):
 
         self.dates = []
         self.date_data = {}
-        
         
         for fname in fnames:
             txt_string = os.path.basename(fname).split(".")[1]
@@ -363,14 +354,12 @@ class MULObservations(object):
         self.emulator = cPickle.load(open(emulator, 'rb'), encoding='latin1')
         
     def get_band_data(self,the_date,band_no):
-        
-        print ('Doing data for ',the_date)
-        # create and index to call the approaiate layers of VIS/NIR layers
+        # create and index to call the appropriate layers of VIS/NIR layers
         band_index = band_no*3
         # data is layers 1,2,3 or 4,5,6 based of VIS/NIR
-        data_band_indexes = np.arange(1+band_index,4+band_index)
+        data_band_indexes = np.arange(1+band_index, 4+band_index)
         # QA is layers 10,11,12 or 13,14,15 based of VIS/NIR
-        qa_band_indexes = np.arange(10+band_index,13+band_index)
+        qa_band_indexes = np.arange(10+band_index, 13+band_index)
 
         # get the data file for the date
         data_file = self.date_data[the_date]
@@ -379,42 +368,42 @@ class MULObservations(object):
         # parameters
         to_BHR = np.array([1.0, 0.189184, -1.377622])       
 
-        # lop through data layers
-        for n,band in enumerate(data_band_indexes):
-            # open the data subset layers as numbers and multiply by the right coefficent
+        # loop through data layers
+        for n, band in enumerate(data_band_indexes):
+            # open the data subset layers as numbers and multiply by the right coefficient
             data = opn.GetRasterBand(int(band)).ReadAsArray()*(to_BHR[n])
             data = data[self.uly:(self.uly + self.dy),
-                    self.ulx:(self.ulx + self.dx)]
+                        self.ulx:(self.ulx + self.dx)]
             if n == 0:
                 # create an empty cube for the data
-                bhr_cube = np.zeros([3,data.shape[0],data.shape[1]])
+                bhr_cube = np.zeros([3, data.shape[0], data.shape[1]])
                 # ... and add it
                 bhr_cube[n] = data
 
                 # create an empty cube for the variances
-                var_cube = np.zeros([3,data.shape[0],data.shape[1]])
+                var_cube = np.zeros([3, data.shape[0], data.shape[1]])
                 # ... and add the data by calling the right variance index
-                # and multiply by the coeeficent **2 to propogate the error 
+                # and multiply by the coefficient **2 to propagate the error
                 vdata = opn.GetRasterBand(int(qa_band_indexes[n])).ReadAsArray()*(to_BHR[n]**2)
-                var_cube[n] = vdata[self.uly:(self.uly + self.dy),self.ulx:(self.ulx + self.dx)]
+                var_cube[n] = vdata[self.uly:(self.uly + self.dy), self.ulx:(self.ulx + self.dx)]
             else:
                 # do the same for the other layers
                 bhr_cube[n] = data[self.uly:(self.uly + self.dy),
-                    self.ulx:(self.ulx + self.dx)]
+                                   self.ulx:(self.ulx + self.dx)]
                 vdata = opn.GetRasterBand(int(qa_band_indexes[n])).ReadAsArray()*(to_BHR[n]**2)
-                var_cube[n] = vdata[self.uly:(self.uly + self.dy),self.ulx:(self.ulx + self.dx)]
+                var_cube[n] = vdata[self.uly:(self.uly + self.dy), self.ulx:(self.ulx + self.dx)]
 
-        # sum accross axis 0 to find the BHR and the variance
-        bhr = np.sum(bhr_cube,axis=0)
-        R_mat = np.sum(var_cube,axis=0)
+        # sum across axis 0 to find the BHR and the variance
+        bhr = np.sum(bhr_cube, axis=0)
+        R_mat = np.sum(var_cube, axis=0)
 
         # find the mask
         # call the n observations layers
         num_layers = opn.GetRasterBand(19).ReadAsArray()[self.uly:(self.uly + self.dy),
-                    self.ulx:(self.ulx + self.dx)]
+                                                         self.ulx:(self.ulx + self.dx)]
         # create mask of the right size
         mask = np.ones_like(num_layers).astype(int)
-        # make 0 all pixles with less than 10 observations
+        # make 0 all pixels with less than 10 observations
         mask[np.where(num_layers <= 7)] = 0
         
         # copy the code to make inverse matrix of the 
