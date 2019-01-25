@@ -150,14 +150,19 @@ class Sentinel2Observations(object):
         
         current_folder = self.date_data[timestep]
 
+
         meta_file = os.path.join(current_folder, "metadata.xml")
-        sza, saa, vza, vaa = parse_xml(meta_file)
+        try:
+            sza, saa, vza, vaa = parse_xml(meta_file)
+        except FileNotFoundError:
+            meta_file = os.path.join(current_folder, "../../../MTD_MSIL1C.xml")
+            sza, saa, vza, vaa = parse_xml(meta_file)
         metadata = dict (zip(["sza", "saa", "vza", "vaa"],
                             [sza, saa, vza, vaa]))
         # This should be really using EmulatorEngine...
         emulator_file = self._find_emulator(sza, saa, vza, vaa)
         emulator = cPickle.load( open (emulator_file, 'rb'),
-                                 encoding='latin1' )
+                                 encoding='latin1')
 
         # Read and reproject S2 surface reflectance
         the_band = self.band_map[band]
