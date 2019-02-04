@@ -56,7 +56,7 @@ class SAILPrior(object):
     def process_prior ( self, time, inv_cov=True):
         # Presumably, self._inference_prior has some method to retrieve
         # a bunch of files for a given date...
-        n_pixels = self.state_mask.sum()
+        n_pixels = int(self.state_mask.sum())
         x0 = np.array([self.mean for i in range(n_pixels)]).flatten()
         if inv_cov:
             inv_covar_list = [self.inv_covar for m in range(n_pixels)]

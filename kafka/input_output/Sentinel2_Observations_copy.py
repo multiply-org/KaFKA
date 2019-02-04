@@ -76,22 +76,20 @@ S2MSIdata = namedtuple('S2MSIdata',
                      'observations uncertainty mask metadata emulator')
 
 class Sentinel2Observations(object):
-    def __init__(self, parent_folder, emulator_folder, state_mask,
-                 input_bands=None):
+    def __init__(self, parent_folder, emulator_folder, state_mask):
         if not os.path.exists(parent_folder):
             raise IOError("S2 data folder doesn't exist")
-        
-        # Here is where you set the bands you are interested in
-        if input_bands is None:
-            self.band_map = ['02', '03', '04', '05', '06', '07',
-                              '08', '8A', '12']
-        else:
-            self.band_map = input_bands
         self.parent = parent_folder
         self.emulator_folder = emulator_folder
         self.state_mask = state_mask
         self._find_granules(self.parent)
 
+        # Here is where you set the bands you are interested in
+        #in my case, only the ones that are corrected through SIAC 
+        # and also have emulators plotted for them        
+        self.band_map = ['02', '03', '04',
+                         '08', '12']
+        ###########################################################
         emulators = glob.glob(os.path.join(self.emulator_folder, "*.pkl"))
         emulators.sort()
         self.emulator_files = emulators
@@ -114,13 +112,15 @@ class Sentinel2Observations(object):
         for root, dirs, files in os.walk(parent_folder):
             for fich in files:
                 if fich.find("aot.tif") >= 0:
+                     
                     try:
-                        this_date = datetime.datetime(
-                            *[int(i) for i in root.split("/")[-4:-1]])
+                        this_date = datetime.datetime(*[int(i)
+                                    for i in root.split("/")[-4:-1]])
                     except:
                         a = root 
                         a = a.split('/')[-2].split('_')[-1]
-                        this_date = datetime.datetime(int(a[:4]), int(a[4:6]), int(a[6:8]))
+    
+                        this_date = datetime.datetime(int(a[:4]),int(a[4:6]),int(a[6:8]))
                     
                     self.dates.append(this_date)
                     self.date_data[this_date] = root
@@ -129,7 +129,7 @@ class Sentinel2Observations(object):
         for the_date in self.dates:
             #self.bands_per_observation[the_date] = 5 # 10 bands
             #  Put number of bands you are using here
-            self.bands_per_observation[the_date] = len(self.band_map)
+            self.bands_per_observation[the_date] = 5
 
     def _find_emulator(self, sza, saa, vza, vaa):
         raa = vaa - saa
@@ -150,19 +150,14 @@ class Sentinel2Observations(object):
         
         current_folder = self.date_data[timestep]
 
-
         meta_file = os.path.join(current_folder, "metadata.xml")
-        try:
-            sza, saa, vza, vaa = parse_xml(meta_file)
-        except FileNotFoundError:
-            meta_file = os.path.join(current_folder, "../MTD_TL.xml")
-            sza, saa, vza, vaa = parse_xml(meta_file)
+        sza, saa, vza, vaa = parse_xml(meta_file)
         metadata = dict (zip(["sza", "saa", "vza", "vaa"],
                             [sza, saa, vza, vaa]))
         # This should be really using EmulatorEngine...
         emulator_file = self._find_emulator(sza, saa, vza, vaa)
         emulator = cPickle.load( open (emulator_file, 'rb'),
-                                 encoding='latin1')
+                                 encoding='latin1' )
 
         # Read and reproject S2 surface reflectance
         the_band = self.band_map[band]
@@ -171,21 +166,31 @@ class Sentinel2Observations(object):
         original_s2_file = os.path.join ( current_folder, 
                                          "B{}_sur.tif".format(the_band))
                                          
-
+        #print (original_s2_file+' == orig')
+       
+        # ae
         # g = reproject_image( original_s2_file, self.state_mask)
         try:
-            g = reproject_image(original_s2_file, self.state_mask)
-        except SystemError:
-            original_s2_file = glob.glob(original_s2_file.split('IMG_DATA')[0]+'IMG_DATA/*_B*.tif')[0].split('_B')[0]+'_B%s_sur.tif'%the_band
-            g = reproject_image(original_s2_file, self.state_mask)
+            g = reproject_image( original_s2_file, self.state_mask)
+        except:
+            #print ('=====================')
+            #print (original_s2_file,the_band)
             
-        rho_surface = g.ReadAsArray()
+            original_s2_file = glob.glob(original_s2_file.split('IMG_DATA')[0]+'IMG_DATA/*_B*.tif')[0].split('_B')[0]+'_B%s_sur.tif'%the_band
+            
+            #print (original_s2_file+' == reformed')
+            
+            g = reproject_image( original_s2_file, self.state_mask)
+            
+        
+        # ae
+        rho_surface = g.ReadAsArray()        
         mask = rho_surface > 0
         rho_surface = np.where(mask, rho_surface/10000., 0)
         # Read and reproject S2 angles
         
-        # ae to make finding the right emulator more intuitive
-        band_dictionary = {'02':2, '03': 3, '04': 4, '05': 5, '06': 6, '07':7, '08': 8, '8A': 9, '09': 10, '11': 12, '12': 13}
+        # ae to make finding the right emulator more intuative
+        band_dictionary = {'02':2, '03': 3, '04': 4, '05': 5, '06': 6, '07':7, '08': 8, '11': 12, '12': 13}
         
         emulator_band_map = []
         for i in self.band_map:
@@ -204,7 +209,7 @@ class Sentinel2Observations(object):
 
         s2_band = bytes("S2A_MSI_{:02d}".format(emulator_band_map[band]), 'latin1' )
 
-        s2data = S2MSIdata(rho_surface, R_mat_sp, mask, metadata, emulator[s2_band] )
+        s2data = S2MSIdata (rho_surface, R_mat_sp, mask, metadata, emulator[s2_band] )
        
         return s2data
 
