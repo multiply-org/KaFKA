@@ -84,7 +84,7 @@ class Sentinel2Observations(object):
         # Here is where you set the bands you are interested in
         if input_bands is None:
             self.band_map = ['02', '03', '04', '05', '06', '07',
-                              '08', '8A', '09', '12']
+                              '08', '8A', '12']
         else:
             self.band_map = input_bands
         self.parent = parent_folder
@@ -155,7 +155,7 @@ class Sentinel2Observations(object):
         try:
             sza, saa, vza, vaa = parse_xml(meta_file)
         except FileNotFoundError:
-            meta_file = os.path.join(current_folder, "../../../MTD_MSIL1C.xml")
+            meta_file = os.path.join(current_folder, "../MTD_TL.xml")
             sza, saa, vza, vaa = parse_xml(meta_file)
         metadata = dict (zip(["sza", "saa", "vza", "vaa"],
                             [sza, saa, vza, vaa]))
@@ -174,10 +174,10 @@ class Sentinel2Observations(object):
 
         # g = reproject_image( original_s2_file, self.state_mask)
         try:
-            g = reproject_image( original_s2_file, self.state_mask)
-        except:
+            g = reproject_image(original_s2_file, self.state_mask)
+        except SystemError:
             original_s2_file = glob.glob(original_s2_file.split('IMG_DATA')[0]+'IMG_DATA/*_B*.tif')[0].split('_B')[0]+'_B%s_sur.tif'%the_band
-            g = reproject_image( original_s2_file, self.state_mask)
+            g = reproject_image(original_s2_file, self.state_mask)
             
         rho_surface = g.ReadAsArray()
         mask = rho_surface > 0
