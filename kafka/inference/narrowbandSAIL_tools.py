@@ -71,16 +71,20 @@ class SAILPrior(object):
 def propagate_LAI_narrowbandSAIL(x_analysis, P_analysis,
                                      P_analysis_inverse,
                                      M_matrix, Q_matrix,
-                                     prior=None, state_propagator=None, date=None):
+                                     date=None):
     ''' Propagate a single parameter and
      set the rest of the parameter propagations to zero
      This should be used with a prior for the remaining parameters'''
     nparameters = 10
     lai_position = 6
+    try:
+        trajectory_matrix = M_matrix(date, x_analysis, lai_position, nparameters)
+    except TypeError:
+        trajectory_matrix = M_matrix
 
     x_prior, c_prior, c_inv_prior = sail_prior_values()
     return propagate_single_parameter(x_analysis, P_analysis,
                                       P_analysis_inverse,
-                                      M_matrix, Q_matrix,
+                                      trajectory_matrix, Q_matrix,
                                       nparameters, lai_position,
                                       x_prior, c_inv_prior)

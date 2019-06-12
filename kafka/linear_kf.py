@@ -115,13 +115,24 @@ class LinearKalman (object):
         """We call this diagnostic method at the **END** of the iteration"""
         pass
 
-    def set_trajectory_model(self):
+    def _identity_trajectory(self, date=None):
         """In a Kalman filter, the state is progated from time `t` to `t+1`
-        using a model. We assume that this model is a matrix, and for the time
-        being, the matrix is the identity matrix. That's how we roll!"""
+                using a model. This model is the identity matrix.
+                """
         n = self.n_state_elems
-        self.trajectory_model = sp.eye(self.n_params*n, self.n_params*n,
-                                       format="csr")
+        return sp.eye(self.n_params * n, self.n_params * n,
+                      format="csr")
+
+    def set_trajectory_model(self, model=None):
+        """In a Kalman filter, the state is progated from time `t` to `t+1`
+        using a model.
+        If model = None this model is the identity matrix.
+        Alternatively model can be an object that can be called by
+        some state_propagators (currently only propagate_LAI_narrowbandSAIL"""
+        if model is None:
+            self.trajectory_model = self._identity_trajectory()
+        else:
+            self.trajectory_model = model
 
     def set_trajectory_uncertainty(self, Q):
         """In a Kalman filter, the model that propagates the state from time
@@ -454,7 +465,7 @@ class LinearKalman (object):
         M[self.state_mask] = x_analysis[6::7]
         plt.figure()
         plt.imshow(M[650:730, 1180:1280], interpolation="nearest", vmin=0.1, vmax=0.5)
-        plt.title("Band: %d, Date:"%band + timestep.strftime("%Y-%m-%d"))
+        plt.title("Band: %d, Date:" % band + timestep.strftime("%Y-%m-%d"))
         
         return x_analysis, P_analysis, P_analysis_inverse, innovations
 
