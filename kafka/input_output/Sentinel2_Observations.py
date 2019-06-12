@@ -145,6 +145,22 @@ class Sentinel2Observations(object):
         iloc = np.where(e1*e2*e3)[0][0]
         return self.emulator_files[iloc]
 
+    def check_mask(self, band=0):
+        g = gdal.Open(self.state_mask)
+        s_mask = g.ReadAsArray().astype(np.bool)
+        to_remove = []
+        for date, thefile in self.date_data.items():
+            print(thefile)
+            data = self.get_band_data(date, band)
+            mask = data.mask
+            if sum(mask[s_mask]) == 0:
+                to_remove.append(date)
+        for date in to_remove:
+            del self.date_data[date]
+            self.dates.remove(date)
+        print("remove {}".format(to_remove))
+        print("keep {}".format(self.dates))
+
 
     def get_band_data(self, timestep, band):
         
@@ -185,7 +201,7 @@ class Sentinel2Observations(object):
         # Read and reproject S2 angles
         
         # ae to make finding the right emulator more intuitive
-        band_dictionary = {'02':2, '03': 3, '04': 4, '05': 5, '06': 6, '07':7, '08': 8, '8A': 9, '09': 10, '11': 12, '12': 13}
+        band_dictionary = {'02': 2, '03': 3, '04': 4, '05': 5, '06': 6, '07': 7, '08': 8, '8A': 9, '09': 10, '11': 12, '12': 13}
         
         emulator_band_map = []
         for i in self.band_map:
@@ -202,9 +218,9 @@ class Sentinel2Observations(object):
         R_mat_sp.setdiag(1./(R_mat.ravel())**2)
         R_mat_sp = R_mat_sp.tocsr()
 
-        s2_band = bytes("S2A_MSI_{:02d}".format(emulator_band_map[band]), 'latin1' )
+        s2_band = bytes("S2A_MSI_{:02d}".format(emulator_band_map[band]), 'latin1')
 
-        s2data = S2MSIdata(rho_surface, R_mat_sp, mask, metadata, emulator[s2_band] )
+        s2data = S2MSIdata(rho_surface, R_mat_sp, mask, metadata, emulator[s2_band])
        
         return s2data
 
