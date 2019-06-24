@@ -2,6 +2,7 @@ import logging
 import gdal
 import numpy as np
 import os
+import scipy
 
 from .utils import block_diag
 from .kf_tools import propagate_single_parameter
@@ -77,10 +78,39 @@ def propagate_LAI_narrowbandSAIL(x_analysis, P_analysis,
      This should be used with a prior for the remaining parameters'''
     nparameters = 10
     lai_position = 6
-    try:
-        trajectory_matrix = M_matrix(date, x_analysis, lai_position, nparameters)
-    except TypeError:
+    #try:
+    if type(M_matrix) is np.ndarray:
         trajectory_matrix = M_matrix
+    else:
+        trajectory_matrix = M_matrix(date, x_analysis)
+
+    x_prior, c_prior, c_inv_prior = sail_prior_values()
+    return propagate_single_parameter(x_analysis, P_analysis,
+                                      P_analysis_inverse,
+                                      trajectory_matrix, Q_matrix,
+                                      nparameters, lai_position,
+                                      x_prior, c_inv_prior)
+
+def propagate_LAI_variableQ(x_analysis, P_analysis,
+                                     P_analysis_inverse,
+                                     M_matrix, LAI_unc,
+                                     date=None):
+    ''' Propagate a single parameter and
+     set the rest of the parameter propagations to zero
+     This should be used with a prior for the remaining parameters'''
+    nparameters = 10
+    lai_position = 6
+    #try:
+    if type(M_matrix) is np.ndarray or scipy.sparse.issparse(M_matrix):
+
+        trajectory_matrix = M_matrix
+    else:
+        trajectory_matrix = M_matrix(date, x_analysis)
+
+    Q_matrix = LAI_unc
+
+    for i in range(lai_position, len(x_analysis), nparameters):
+        Q_matrix[i,i] = Q_matrix[i,i]*0.5*x_analysis[i]
 
     x_prior, c_prior, c_inv_prior = sail_prior_values()
     return propagate_single_parameter(x_analysis, P_analysis,
