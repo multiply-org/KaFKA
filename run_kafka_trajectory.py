@@ -25,7 +25,7 @@ def mkdir_p(path):
         else:
             raise
 
-def run_kafka(data_folder, state_mask, out_path, start_time, ndays,
+def run_kafka_trajectory(data_folder, state_mask, out_path, start_time, ndays,
               prior, Qfactor=1):
 
     if not os.path.exists(out_path):
