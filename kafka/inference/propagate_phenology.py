@@ -1,6 +1,9 @@
 import numpy as np
 import scipy.sparse as sp
+import logging
 
+# Set up logging
+LOG = logging.getLogger(__name__+".linear_kf")
 
 class TrajectoryFromPrior(object):
     def __init__(self, dates, prior, param_loc, n_params, transformed=True):
@@ -65,8 +68,11 @@ class TrajectoryScaleFromPrior(object):
         # We are in real coordiantes. This is the scale factor for propagation if
         # we want the proportional change in the propagated timestep to equal the proportional
         # change in the prior
-        prop_matrix_diag[self.param_loc::self.n_params] = \
-            x_analysis[self.param_loc::self.n_params]**self.exponent[date.date()]
+        try:
+            prop_matrix_diag[self.param_loc::self.n_params] = \
+                x_analysis[self.param_loc::self.n_params]**self.exponent[date.date()]
+        except KeyError:
+            LOG.warning("{} not found in trajectory model. Default to identity".format(date.date()))
         # sometimes x_analysis can go negative. This is unphysical and cannot be transformed
         # back into real space. This leads to nan in the propagation matrix. The propagation
         # is also meaningless at this stage. As this is usually only a few pixels in the image,
