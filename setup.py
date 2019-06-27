@@ -11,7 +11,12 @@ requirements = [
     'matplotlib'
 ]
 
+__version__ = None
+with open('kafka/version.py') as f:
+    exec(f.read())
+
 setup(name='KaFKA',
+      version=__version__,
       description='MULTIPLY KaFKA inference engine',
       author='MULTIPLY Team',
       packages=find_packages(),
