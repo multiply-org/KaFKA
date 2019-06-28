@@ -57,9 +57,9 @@ class TrajectoryScaleFromPrior(object):
         # This assumes a uniform time grid.
 
         if transformed:
-            self.exponent = {d: (j - i)/i for i, j, d in zip(prior[:-1], prior[1:], dates[1:])}
-        else:
             self.exponent = {d: (np.log(j) - np.log(i))/np.log(i) for i, j, d in zip(prior[:-1], prior[1:], dates[1:])}
+        else:
+            self.exponent = {d: (j - i)/i for i, j, d in zip(prior[:-1], prior[1:], dates[1:])}
         self.exponent[dates[0]] = 0
 
     def M_matrix(self, date, x_analysis):#, param_loc, n_params):
