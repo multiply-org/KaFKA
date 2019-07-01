@@ -78,11 +78,10 @@ def propagate_LAI_narrowbandSAIL(x_analysis, P_analysis,
      This should be used with a prior for the remaining parameters'''
     nparameters = 10
     lai_position = 6
-    #try:
-    if type(M_matrix) is np.ndarray:
-        trajectory_matrix = M_matrix
-    else:
+    try:
         trajectory_matrix = M_matrix(date, x_analysis)
+    except TypeError:
+        trajectory_matrix = M_matrix
 
     x_prior, c_prior, c_inv_prior = sail_prior_values()
     return propagate_single_parameter(x_analysis, P_analysis,
