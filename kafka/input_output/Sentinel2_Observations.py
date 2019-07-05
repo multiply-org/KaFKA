@@ -187,12 +187,14 @@ class Sentinel2Observations(object):
         original_s2_file = os.path.join ( current_folder, 
                                          "B{}_sur.tif".format(the_band))
                                          
-
-        # g = reproject_image( original_s2_file, self.state_mask)
+        # tree structure is different for AWS and scihub sentinel downloads. Newer versions of
+        # atmospheric correction use scihub. First try assuming sci hub format, if fails try
+        # AWS format.
         try:
-            g = reproject_image(original_s2_file, self.state_mask)
+            #raise SystemError
+            s2_file = glob.glob(original_s2_file.split('IMG_DATA')[0]+'IMG_DATA/*_B*.tif')[0].split('_B')[0]+'_B%s_sur.tif'%the_band
+            g = reproject_image(s2_file, self.state_mask)
         except SystemError:
-            original_s2_file = glob.glob(original_s2_file.split('IMG_DATA')[0]+'IMG_DATA/*_B*.tif')[0].split('_B')[0]+'_B%s_sur.tif'%the_band
             g = reproject_image(original_s2_file, self.state_mask)
             
         rho_surface = g.ReadAsArray()
