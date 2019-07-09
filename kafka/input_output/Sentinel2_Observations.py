@@ -4,6 +4,7 @@ import datetime
 import glob
 import os
 import sys
+import logging
 
 import numpy as np
 import scipy.sparse as sp # Required for unc
@@ -12,6 +13,11 @@ import osr
 
 import xml.etree.ElementTree as ET
 from collections import namedtuple
+
+
+# Set up logging
+Log = logging.getLogger(__name__+".Sentinel2_Observations")
+
 
 def parse_xml(filename):
     """Parses the XML metadata file to extract view/incidence 
@@ -23,7 +29,7 @@ def parse_xml(filename):
     4. VAA.
     """
     with open(filename, 'r') as f:
-        tree = ET.parse(filename)
+        tree = ET.parse(f)
         root = tree.getroot()
 
         vza = []
@@ -158,8 +164,8 @@ class Sentinel2Observations(object):
         for date in to_remove:
             del self.date_data[date]
             self.dates.remove(date)
-        print("remove {}".format(to_remove))
-        print("keep {}".format(self.dates))
+        Log.info("remove {}".format(to_remove))
+        Log.info("keep {}".format(self.dates))
 
 
     def get_band_data(self, timestep, band):
