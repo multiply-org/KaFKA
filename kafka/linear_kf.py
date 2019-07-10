@@ -30,8 +30,6 @@ import scipy.sparse as sp
 from .inference import variational_kalman
 from .inference import variational_kalman_multiband
 from .inference import iterate_time_grid
-from .inference import hessian_correction
-from .inference import hessian_correction_multiband
 from .inference.kf_tools import propagate_and_blend_prior
 
 # Set up logging

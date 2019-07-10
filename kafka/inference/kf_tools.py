@@ -22,8 +22,7 @@ def hessian_correction_pixel(hessian, C_obs_inv, innovation):
     return hessian_corr
 
 
-def hessian_correction(hessian, R_mat, innovation, mask, state_mask,
-                       nparams):
+def hessian_correction(hessian, R_mat, innovation, mask, state_mask, nparams):
     """Calculates higher order Hessian correction for the likelihood term.
     Needs the GP, the Observational uncertainty, the mask...."""
     if hessian is None:
@@ -47,8 +46,7 @@ def hessian_correction(hessian, R_mat, innovation, mask, state_mask,
     return hessian_corr
 
 
-def hessian_correction_multiband(hessians, R_mats, innovations,
-                                 masks, state_mask, n_bands, nparams):
+def hessian_correction_multiband(hessians, R_mats, innovations, masks, state_mask, n_bands, nparams):
     """ Non linear correction for the Hessian of the cost function. This handles
     multiple bands. """
     R = []
@@ -91,8 +89,7 @@ def blend_prior(prior_mean, prior_cov_inverse, x_forecast, P_forecast_inverse):
     return x_combined, combined_cov_inv
 
 
-def propagate_and_blend_prior(x_analysis, P_analysis, P_analysis_inverse,
-                              M_matrix, Q_matrix, 
+def propagate_and_blend_prior(x_analysis, P_analysis, P_analysis_inverse, M_matrix, Q_matrix,
                               prior=None, state_propagator=None, date=None):
     """
 
@@ -129,8 +126,7 @@ def propagate_and_blend_prior(x_analysis, P_analysis, P_analysis_inverse,
         return None, None, None
 
 
-def propagate_standard_kalman(x_analysis, P_analysis, P_analysis_inverse,
-                              M_matrix, Q_matrix,
+def propagate_standard_kalman(x_analysis, P_analysis, P_analysis_inverse, M_matrix, Q_matrix,
                               prior=None, state_propagator=None, date=None):
     """Standard Kalman filter state propagation using the state covariance
     matrix and a linear state transition model. This function returns `None`
@@ -163,8 +159,7 @@ def propagate_standard_kalman(x_analysis, P_analysis, P_analysis_inverse,
     return x_forecast, P_forecast, None
 
 
-def propagate_information_filter_SLOW(x_analysis, P_analysis, P_analysis_inverse,
-                                      M_matrix, Q_matrix,
+def propagate_information_filter_SLOW(x_analysis, P_analysis, P_analysis_inverse, M_matrix, Q_matrix,
                                       prior=None, state_propagator=None, date=None):
     """Information filter state propagation using the INVERSER state covariance
     matrix and a linear state transition model. This function returns `None`
@@ -203,8 +198,7 @@ def propagate_information_filter_SLOW(x_analysis, P_analysis, P_analysis_inverse
     return x_forecast, None, P_forecast_inverse
 
 
-def propagate_information_filter_approx_SLOW(x_analysis, P_analysis, P_analysis_inverse,
-                                 M_matrix, Q_matrix,
+def propagate_information_filter_approx_SLOW(x_analysis, P_analysis, P_analysis_inverse, M_matrix, Q_matrix,
                                       prior=None, state_propagator=None, date=None):
     """Information filter state propagation using the INVERSER state covariance
     matrix and a linear state transition model. This function returns `None`
@@ -248,8 +242,7 @@ def propagate_information_filter_approx_SLOW(x_analysis, P_analysis, P_analysis_
     return x_forecast, None, P_forecast_inverse
 
 
-def propagate_single_parameter(x_analysis, P_analysis, P_analysis_inverse,
-                               M_matrix, Q_matrix, n_param, location,
+def propagate_single_parameter(x_analysis, P_analysis, P_analysis_inverse, M_matrix, Q_matrix, n_param, location,
                                x_prior, c_inv_prior):
     """ Propagate a single parameter and
      set the rest of the parameter propagations to the prior.
@@ -272,10 +265,8 @@ def propagate_single_parameter(x_analysis, P_analysis, P_analysis_inverse,
     return x0, None, P_forecast_inverse
 
 
-def no_propagation(x_analysis, P_analysis,
-                   P_analysis_inverse,
-                   M_matrix, Q_matrix,
-                   prior=None, state_propagator=None, date=None):
+def no_propagation(x_analysis, P_analysis, P_analysis_inverse, M_matrix, Q_matrix, n_param, prior=None,
+                   state_propagator=None, date=None):
     """
     THIS PROPAGATOR SHOULD NOT BE USED ANY MORE. It is better to set
     the state_propagator to None and to use the Prior exlicitly.
@@ -309,7 +300,8 @@ def no_propagation(x_analysis, P_analysis,
     inverse covariance matrix)"""
 
     x_prior, c_prior, c_inv_prior = tip_prior()
-    n_pixels = len(x_analysis)/7
+    n_pixels = np.shape(x_analysis)[0] / n_param
+    # n_pixels = len(x_analysis)/7
     x_forecast = np.array([x_prior for i in range(n_pixels)]).flatten()
     c_inv_prior_mat = [c_inv_prior for n in range(n_pixels)]
     P_forecast_inverse=block_diag(c_inv_prior_mat, dtype=np.float32)

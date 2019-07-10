@@ -176,8 +176,6 @@ def create_nonlinear_observation_operator(n_params, emulator, metadata,
     return (H0, H_matrix.tocsr(), hess) if calc_hess else (H0, H_matrix.tocsr())
 
 
-
-
 def create_prosail_observation_operator(n_params, emulator, metadata,
                                           mask, state_mask,  x_forecast,
                                           band, calc_hess=False):
@@ -229,9 +227,6 @@ def create_prosail_observation_operator(n_params, emulator, metadata,
                 n += 1
 
     return (H0, H_matrix.tocsr(), hess) if calc_hess else (H0, H_matrix.tocsr())
-
-
-
 
 
 def locate_in_lut(lut, im):
@@ -294,15 +289,7 @@ def block_diag(mats, format=None, dtype=None):
            [ 0,  0,  0,  0,  9, 10],
            [ 0,  0,  0,  0, 11, 12]])
     """
-    import scipy.sparse as sp
-    import scipy.sparse.sputils as spu
-    from scipy.sparse.sputils import upcast, get_index_dtype
-
-    from scipy.sparse.csr import csr_matrix
-    from scipy.sparse.csc import csc_matrix
-    from scipy.sparse.bsr import bsr_matrix
     from scipy.sparse.coo import coo_matrix
-    from scipy.sparse.dia import dia_matrix
 
     from scipy.sparse import issparse
 
