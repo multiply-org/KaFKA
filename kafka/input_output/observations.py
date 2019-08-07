@@ -294,8 +294,128 @@ class BHRObservations(RetrieveBRDFDescriptors):
         R_mat_sp = sp.lil_matrix((N, N))
         R_mat_sp.setdiag(1./(R_mat.ravel())**2)
         R_mat_sp = R_mat_sp.tocsr()
-
         bhr_data = BHR_data(bhr, mask, R_mat_sp, None, self.emulator)
+        
+        return bhr_data
+        
+class MOLCIObservations(object):
+    """
+    An object to store dates, files and structured data objects for running Kafka
+    Inferance engine with custom generated albedo parameter data.
+    """
+    
+    def __init__(self, emulator, tile, directory, start_time,
+                 ulx=0, uly=0, dx=1200, dy=1200, end_time=None):
+        
+        fnames = glob.glob('%s%s/'%(directory,tile)+'BRDF_Para*MOLCI_BB.tif')
+        start_time = datetime.datetime.strptime(start_time, "%Y%j")
+        end_time = start_time + datetime.timedelta(hours=24*365)
+
+        self.dates = []
+        self.date_data = {}
+        
+        for fname in fnames:
+            txt_string = os.path.basename(fname).split(".")[1]
+            date = datetime.datetime.strptime(txt_string, "%Y%j")
+            if (start_time <= date) and ((end_time is None) or
+                                                 (date <= end_time)):
+                self.dates.append(date)
+                self.date_data[date] = fname
+                
+        self._get_emulator(emulator)
+        
+        self.bands_per_observation = {}
+        for the_date in self.dates:
+            self.bands_per_observation[the_date] = 2
+            
+        self.band_transfer = {0: "vis",
+                              1: "nir"}
+        self.ulx = ulx
+        self.uly = uly
+        self.dx = dx
+        self.dy = dy
+        
+        print (self.date_data)
+                
+    def define_output(self):
+        reference_fname = self.date_data[self.dates[0]]
+        g = gdal.Open(reference_fname)
+        proj = g.GetProjection()
+        geoT = np.array(g.GetGeoTransform())
+        new_geoT = geoT*1.
+        new_geoT[0] = new_geoT[0] + self.ulx*new_geoT[1]
+        new_geoT[3] = new_geoT[3] + self.uly*new_geoT[5]
+        return proj, new_geoT.tolist()
+    
+    def _get_emulator(self, emulator):
+        if not os.path.exists(emulator):
+            raise IOError("The emulator {} doesn't exist!".format(emulator))
+        # Assuming emulator is in an pickle file...
+        self.emulator = cPickle.load(open(emulator, 'rb'), encoding='latin1')
+        
+    def get_band_data(self,the_date,band_no):
+        # create and index to call the appropriate layers of VIS/NIR layers
+        band_index = band_no*3
+        # data is layers 1,2,3 or 4,5,6 based of VIS/NIR
+        data_band_indexes = np.arange(1+band_index, 4+band_index)
+        # QA is layers 10,11,12 or 13,14,15 based of VIS/NIR
+        qa_band_indexes = np.arange(10+band_index, 13+band_index)
+
+        # get the data file for the date
+        data_file = self.date_data[the_date]
+        opn = gdal.Open(data_file)
+
+        # parameters
+        to_BHR = np.array([1.0, 0.189184, -1.377622])       
+
+        # loop through data layers
+        for n, band in enumerate(data_band_indexes):
+            # open the data subset layers as numbers and multiply by the right coefficient
+            data = opn.GetRasterBand(int(band)).ReadAsArray()*(to_BHR[n])
+            data = data[self.uly:(self.uly + self.dy),
+                        self.ulx:(self.ulx + self.dx)]
+            if n == 0:
+                # create an empty cube for the data
+                bhr_cube = np.zeros([3, data.shape[0], data.shape[1]])
+                # ... and add it
+                bhr_cube[n] = data
+
+                # create an empty cube for the variances
+                var_cube = np.zeros([3, data.shape[0], data.shape[1]])
+                # ... and add the data by calling the right variance index
+                # and multiply by the coefficient **2 to propagate the error
+                vdata = opn.GetRasterBand(int(qa_band_indexes[n])).ReadAsArray()*(to_BHR[n]**2)
+                var_cube[n] = vdata[self.uly:(self.uly + self.dy), self.ulx:(self.ulx + self.dx)]
+            else:
+                # do the same for the other layers
+                bhr_cube[n] = data[self.uly:(self.uly + self.dy),
+                                   self.ulx:(self.ulx + self.dx)]
+                vdata = opn.GetRasterBand(int(qa_band_indexes[n])).ReadAsArray()*(to_BHR[n]**2)
+                var_cube[n] = vdata[self.uly:(self.uly + self.dy), self.ulx:(self.ulx + self.dx)]
+
+        # sum across axis 0 to find the BHR and the variance
+        bhr = np.sum(bhr_cube, axis=0)
+        R_mat = np.sum(var_cube, axis=0)
+
+        # find the mask
+        # call the n observations layers
+        num_layers = opn.GetRasterBand(19).ReadAsArray()[self.uly:(self.uly + self.dy),
+                                                         self.ulx:(self.ulx + self.dx)]
+        # create mask of the right size
+        mask = np.ones_like(num_layers).astype(int)
+        # make 0 all pixels with less than 10 observations
+        mask[np.where(num_layers <= 7)] = 0
+        
+        # copy the code to make inverse matrix of the 
+        R_mat[np.logical_not(mask)] = 0.
+        N = mask.ravel().shape[0]
+        R_mat_sp = sp.lil_matrix((N, N))
+        R_mat_sp.setdiag(1./(R_mat.ravel()))
+        R_mat_sp = R_mat_sp.tocsr()
+
+        # put into specified data structure
+        bhr_data = BHR_data(bhr,mask,R_mat_sp,None,self.emulator)
+
         return bhr_data
 
     
@@ -319,8 +439,134 @@ class BHRObservationsTest(object):
         mask = np.array(1, dtype=np.bool)
         R_mat = 1./(np.maximum(2.5e-3, bhr * 0.05))**2
         
-    
-        
+class MULObservations(object):
+    """
+    An object to store dates, files and structured data objects for running Kafka
+    Inferance engine with custom generated albedo parameter data.
+    """
+
+    def __init__(self,emulator,tile,directory,start_time,
+                 ulx=0, uly=0, dx=1200, dy=1200,end_time=None):
+
+        fnames = glob.glob('%s%s/'%(directory,tile)+'BRDF_Para*MOLCI_BB.tif')
+        start_time = datetime.datetime.strptime(start_time, "%Y%j")
+        end_time = start_time + datetime.timedelta(hours=24*365)
+
+        self.dates = []
+        self.date_data = {}
+
+
+        for fname in fnames:
+            txt_string = os.path.basename(fname).split(".")[1]
+            date = datetime.datetime.strptime(txt_string, "%Y%j")
+            if (start_time <= date) and ((end_time is None) or
+                                                 (date <= end_time)):
+                self.dates.append(date)
+                self.date_data[date] = fname
+
+        self._get_emulator(emulator)
+
+        self.bands_per_observation = {}
+        for the_date in self.dates:
+            self.bands_per_observation[the_date] = 2
+
+        self.band_transfer = {0: "vis",
+                              1: "nir"}
+        self.ulx = ulx
+        self.uly = uly
+        self.dx = dx
+        self.dy = dy
+
+        print (self.date_data)
+
+    def define_output(self):
+        reference_fname = self.date_data[self.dates[0]]
+        g = gdal.Open(reference_fname)
+        proj = g.GetProjection()
+        geoT = np.array(g.GetGeoTransform())
+        new_geoT = geoT*1.
+        new_geoT[0] = new_geoT[0] + self.ulx*new_geoT[1]
+        new_geoT[3] = new_geoT[3] + self.uly*new_geoT[5]
+        return proj, new_geoT.tolist()
+
+    def _get_emulator(self, emulator):
+        if not os.path.exists(emulator):
+            raise IOError("The emulator {} doesn't exist!".format(emulator))
+        # Assuming emulator is in an pickle file...
+        self.emulator = cPickle.load(open(emulator, 'rb'), encoding='latin1')
+
+
+    def get_band_data(self,the_date,band_no):
+
+        # create and index to call the appropriate layers of VIS/NIR layers
+        band_index = band_no*3
+        # data is layers 1,2,3 or 4,5,6 based of VIS/NIR
+        data_band_indexes = np.arange(1+band_index,4+band_index)
+        # QA is layers 10,11,12 or 13,14,15 based of VIS/NIR
+        qa_band_indexes = np.arange(10+band_index,13+band_index)
+
+        # get the data file for the date
+        data_file = self.date_data[the_date]
+        opn = gdal.Open(data_file)
+
+        # parameters
+        to_BHR = np.array([1.0, 0.189184, -1.377622])
+
+        # lop through data layers
+        for n,band in enumerate(data_band_indexes):
+            # open the data subset layers as numbers and multiply by the right coefficent
+            data = opn.GetRasterBand(int(band)).ReadAsArray()*(to_BHR[n])
+            data = data[self.uly:(self.uly + self.dy),
+                    self.ulx:(self.ulx + self.dx)]
+            if n == 0:
+                # create an empty cube for the data
+                bhr_cube = np.zeros([3,data.shape[0],data.shape[1]])
+                # ... and add it
+                bhr_cube[n] = data
+
+                # create an empty cube for the variances
+                var_cube = np.zeros([3,data.shape[0],data.shape[1]])
+                # ... and add the data by calling the right variance index
+                # and multiply by the coefficient **2 to propagate the error
+                vdata = opn.GetRasterBand(int(qa_band_indexes[n])).ReadAsArray()*(to_BHR[n]**2)
+                var_cube[n] = vdata[self.uly:(self.uly + self.dy),self.ulx:(self.ulx + self.dx)]
+            else:
+                # do the same for the other layers
+                bhr_cube[n] = data[self.uly:(self.uly + self.dy),
+                                   self.ulx:(self.ulx + self.dx)]
+                vdata = opn.GetRasterBand(int(qa_band_indexes[n])).ReadAsArray()*(to_BHR[n]**2)
+                var_cube[n] = vdata[self.uly:(self.uly + self.dy),self.ulx:(self.ulx + self.dx)]
+
+        # sum across axis 0 to find the BHR and the variance
+        bhr = np.sum(bhr_cube, axis=0)
+        R_mat = np.sum(var_cube, axis=0)
+
+        # find the mask
+        # call the n observations layers
+        num_layers = opn.GetRasterBand(19).ReadAsArray()[self.uly:(self.uly + self.dy),
+                                                         self.ulx:(self.ulx + self.dx)]
+        # create mask of the right size
+        mask = np.ones_like(num_layers).astype(int)
+        # make 0 all pixels with less than 10 observations
+        mask[np.where(num_layers <= 7)] = 0
+
+
+        # copy the code to make inverse matrix of the
+        R_mat[np.logical_not(mask)] = 0.
+        N = mask.ravel().shape[0]
+        R_mat_sp = sp.lil_matrix((N, N))
+        R_mat_sp.setdiag(1./R_mat.ravel())
+        R_mat_sp = R_mat_sp.tocsr()
+
+        # put into specified data structure
+        bhr_data = BHR_data(bhr, mask, R_mat_sp, None, self.emulator)
+
+        return bhr_data
+
+
+
+
+
 
 class KafkaOutput(object):
     """A very simple class to output the state."""

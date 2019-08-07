@@ -29,7 +29,12 @@ import scipy.sparse as sp
 
 from .inference import variational_kalman
 from .inference import variational_kalman_multiband
+#from .inference import locate_in_lut, run_emulator, create_uncertainty
+#from .inference import create_linear_observation_operator
+#from .inference import create_nonlinear_observation_operator
 from .inference import iterate_time_grid
+from .inference import hessian_correction
+from .inference import hessian_correction_multiband
 from .inference.kf_tools import propagate_and_blend_prior
 
 # Set up logging
@@ -106,13 +111,24 @@ class LinearKalman (object):
         """We call this diagnostic method at the **END** of the iteration"""
         pass
 
-    def set_trajectory_model(self):
+    def _identity_trajectory(self, date=None):
         """In a Kalman filter, the state is progated from time `t` to `t+1`
-        using a model. We assume that this model is a matrix, and for the time
-        being, the matrix is the identity matrix. That's how we roll!"""
+                using a model. This model is the identity matrix.
+                """
         n = self.n_state_elems
-        self.trajectory_model = sp.eye(self.n_params*n, self.n_params*n,
-                                       format="csr")
+        return sp.eye(self.n_params * n, self.n_params * n,
+                      format="csr")
+
+    def set_trajectory_model(self, model=None):
+        """In a Kalman filter, the state is progated from time `t` to `t+1`
+        using a model.
+        If model = None this model is the identity matrix.
+        Alternatively model can be an object that can be called by
+        some state_propagators (currently only propagate_LAI_narrowbandSAIL"""
+        if model is None:
+            self.trajectory_model = self._identity_trajectory()
+        else:
+            self.trajectory_model = model
 
     def set_trajectory_uncertainty(self, Q):
         """In a Kalman filter, the model that propagates the state from time
@@ -164,7 +180,9 @@ class LinearKalman (object):
 
         The time_grid ought to be a list with the time steps given in the same
         form as self.observation_times"""
+
         for timestep, locate_times in iterate_time_grid(time_grid, self.observations.dates):
+
             self.current_timestep = timestep
 
             if len(locate_times) == 0:
@@ -298,28 +316,28 @@ class LinearKalman (object):
         # Once we have converged...
         # Correct hessian for higher order terms
         #split_points = [m.sum( ) for m in MASK]
-        #todo include this part. Rather than commenting out, we should decide whether to correct or not
-        # HESSIAN = []
-        # INNOVATIONS = np.split(innovations, n_bands)
-        # for band, data in enumerate(current_data):
+        HESSIAN = []
+        INNOVATIONS = np.split(innovations, n_bands)
+        for band, data in enumerate(current_data):
                 # calculate the hessian for the solution
-                # _,_,hessian= self._create_observation_operator(self.n_params,
-                #                                          data.emulator,
-                #                                          data.metadata,
-                #                                          data.mask,
-                #                                          self.state_mask,
-                #                                          x_analysis,
-                #                                          band,
-                #                                          calc_hess = True)
-                # HESSIAN.append(hessian)
-        # P_correction = hessian_correction_multiband(HESSIAN,
-        #                                             UNC, INNOVATIONS, MASK,
-        #                                             self.state_mask, n_bands,
-        #                                             self.n_params)
-        # P_analysis_inverse = P_analysis_inverse - P_correction
-        # Rarely, this returns a small negative value. For now set to nan.
-        # May require further investigation in the future
-        # P_analysis_inverse[P_analysis_inverse<0] = np.nan
+                _,_,hessian= self._create_observation_operator(self.n_params,
+                                                         data.emulator,
+                                                         data.metadata,
+                                                         data.mask,
+                                                         self.state_mask,
+                                                         x_analysis,
+                                                         band,
+                                                         calc_hess = True)
+                HESSIAN.append(hessian)
+        P_correction = hessian_correction_multiband(HESSIAN,
+                                                    UNC, INNOVATIONS, MASK,
+                                                    self.state_mask, n_bands,
+                                                    self.n_params)
+        P_analysis_inverse_uncorrected = P_analysis_inverse
+        P_analysis_inverse = P_analysis_inverse - P_correction
+        # Rarely, this returns a small negative value.
+        # Remove the correction for those cases
+        P_analysis_inverse[P_analysis_inverse < 0] = P_analysis_inverse_uncorrected[P_analysis_inverse < 0]
 
         # Done with this observation, move along...
         
@@ -411,21 +429,20 @@ class LinearKalman (object):
 
             x_prev = x_analysis
             n_iter += 1
-        #todo include this part. Rather than commenting out, we should decide whether to correct or not
         # Correct hessian for higher order terms
-        # P_correction = hessian_correction(data.emulator, x_analysis,
-        #                                   data.uncertainty, innovations,
-        #                                   data.mask, self.state_mask, band,
-        #                                   self.n_params)
+        P_correction = hessian_correction(data.emulator, x_analysis,
+                                          data.uncertainty, innovations,
+                                          data.mask, self.state_mask, band,
+                                          self.n_params)
         # UPDATE HESSIAN WITH HIGHER ORDER CONTRIBUTION
-        # P_analysis_inverse = P_analysis_inverse - P_correction
+        P_analysis_inverse = P_analysis_inverse - P_correction
         # Rarely, this returns a small negative value. For now set to nan.
         # May require further investigation in the future
-        # negative_values = P_analysis_inverse<0
-        # if any(negative_values):
-        #     P_analysis_inverse[negative_values] = np.nan
-        #     LOG.warning("{} negative values in inverse covariance matrix".format(
-        #         sum(negative_values)))
+        negative_values = P_analysis_inverse<0
+        if any(negative_values):
+            P_analysis_inverse[negative_values] = np.nan
+            LOG.warning("{} negative values in inverse covariance matrix".format(
+                sum(negative_values)))
 
 
         import matplotlib.pyplot as plt
@@ -433,7 +450,7 @@ class LinearKalman (object):
         M[self.state_mask] = x_analysis[6::7]
         plt.figure()
         plt.imshow(M[650:730, 1180:1280], interpolation="nearest", vmin=0.1, vmax=0.5)
-        plt.title("Band: %d, Date:"%band + timestep.strftime("%Y-%m-%d"))
+        plt.title("Band: %d, Date:" % band + timestep.strftime("%Y-%m-%d"))
         
         return x_analysis, P_analysis, P_analysis_inverse, innovations
 
