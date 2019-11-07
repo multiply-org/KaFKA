@@ -2,14 +2,15 @@
 
 from setuptools import setup, find_packages
 
-requirements = [
-    'pytest',
-    'numpy',
-    'scipy',
-    'gdal',
+# requirements = [
+#     'pytest',
+#     'numpy',
+#     'scipy',
+#     'gdal',
     # 'BRDF_descriptors', # Not available for automatic installation
-    'matplotlib'
-]
+    # 'matplotlib'
+# ]
+requirements = []
 
 __version__ = None
 with open('kafka/version.py') as f:
