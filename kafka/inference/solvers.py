@@ -19,12 +19,8 @@
 # You should have received a copy of the GNU General Public License
 # along with KaFKA.  If not, see <http://www.gnu.org/licenses/>.
 
-from collections import namedtuple
 import numpy as np
 import scipy.sparse as sp
-import matplotlib.pyplot as plt
-
-#from utils import  matrix_squeeze, spsolve2, reconstruct_array
 
 # Set up logging
 import logging
@@ -72,9 +68,6 @@ def variational_kalman( observations, mask, state_mask, uncertainty, H_matrix, n
     fwd_modelled = H_matrix_.dot(x_analysis-x_forecast) + H0
     innovations = y_orig - fwd_modelled
     
-    #x_analysis = reconstruct_array ( x_analysis_prime, x_forecast,
-    #                                    mask.ravel(), n_params=n_params)
-    
     return x_analysis, None, A, innovations, fwd_modelled
     
 
@@ -94,7 +87,6 @@ def sort_band_data(H_matrix, observations, uncertainty, mask,
     if non_linear:
         y = y + H_matrix_.dot(x0) - H0
     return H_matrix_, H0, R, y, y_orig
-        
 
 
 def variational_kalman_multiband( observations_b, mask_b, state_mask, uncertainty_b, H_matrix_b, n_params,
@@ -143,4 +135,3 @@ def variational_kalman_multiband( observations_b, mask_b, state_mask, uncertaint
     #x_analysis = reconstruct_array ( x_analysis_prime, x_forecast,
     #                                    mask.ravel(), n_params=n_params)
     return x_analysis, None, A, innovations, fwd_modelled
-    
