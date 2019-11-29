@@ -38,7 +38,8 @@ from .inference import hessian_correction_multiband
 from .inference.kf_tools import propagate_and_blend_prior
 
 # Set up logging
-
+component_progress_logger = logging.getLogger('ComponentProgress')
+component_progress_logger.setLevel(logging.INFO)
 LOG = logging.getLogger(__name__+".linear_kf")
 
 
@@ -217,7 +218,9 @@ class LinearKalman (object):
         """The method assimilates the observatins at timestep `timestep`, using
         a prior a multivariate Gaussian distribution with mean `x_forecast` and
         variance `P_forecast`. THIS DOES ALL BANDS SIMULTANEOUSLY!!!!!"""
-        for step in locate_times:
+        for i, step in enumerate(locate_times):
+            start = i / len(locate_times)
+            end = (i + 1) / len(locate_times)
             LOG.info("Assimilating %s..." % step.strftime("%Y-%m-%d"))
             current_data = []
             # Reads all bands into one list
@@ -227,7 +230,7 @@ class LinearKalman (object):
 
             x_analysis, P_analysis, P_analysis_inverse, innovations = \
                 self.do_all_bands(step, current_data, x_forecast, P_forecast,
-                                  P_forecast_inverse)
+                                  P_forecast_inverse, start=start, end=end)
             x_forecast = x_analysis*1.
             try:
                 P_forecast = P_analysis*1.
@@ -243,13 +246,14 @@ class LinearKalman (object):
 
     def do_all_bands(self, timestep, current_data, x_forecast, P_forecast,
                         P_forecast_inverse, convergence_tolerance=1e-3,
-                        min_iterations=2):
+                        min_iterations=2, start=0.0, end=100.0):
         converged = False
         # Linearisation point is set to x_forecast for first iteration
         x_prev = x_forecast*1.
         n_iter = 1
         n_bands = len(current_data)
         while not converged:
+            component_progress_logger.info(f'{int(start + (((n_iter - 1) / 25) * (end - start)))}')
             Y = []
             MASK = []
             UNC = []
