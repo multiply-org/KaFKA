@@ -40,6 +40,11 @@ from .inference.kf_tools import propagate_and_blend_prior
 # Set up logging
 component_progress_logger = logging.getLogger('ComponentProgress')
 component_progress_logger.setLevel(logging.INFO)
+component_progress_formatter = logging.Formatter('%(levelname)s:%(name)s:%(message)s')
+component_progress_logging_handler = logging.StreamHandler()
+component_progress_logging_handler.setLevel(logging.INFO)
+component_progress_logging_handler.setFormatter(component_progress_formatter)
+component_progress_logger.addHandler(component_progress_logging_handler)
 LOG = logging.getLogger(__name__+".linear_kf")
 
 
@@ -219,8 +224,8 @@ class LinearKalman (object):
         a prior a multivariate Gaussian distribution with mean `x_forecast` and
         variance `P_forecast`. THIS DOES ALL BANDS SIMULTANEOUSLY!!!!!"""
         for i, step in enumerate(locate_times):
-            start = i / len(locate_times)
-            end = (i + 1) / len(locate_times)
+            start = (i / len(locate_times)) * 100
+            end = ((i + 1) / len(locate_times)) * 100
             LOG.info("Assimilating %s..." % step.strftime("%Y-%m-%d"))
             current_data = []
             # Reads all bands into one list
