@@ -213,6 +213,7 @@ class LinearKalman (object):
             x_forecast, P_forecast, P_forecast_inverse = self.advance(x_analysis, P_analysis, P_analysis_inverse,
                                                                       self.trajectory_model,
                                                                       self.trajectory_uncertainty)
+            LOG.info("Dumping state to disk")
             self.output.dump_state(timestep, x_forecast, P_forecast, P_forecast_inverse, self.state_mask)
 
 
